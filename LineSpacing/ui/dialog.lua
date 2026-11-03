@@ -65,7 +65,7 @@ function M.open(ctx)
   local spacingSpin = spin(1, 1000, 0.5, 2)
   local unitCombo = Gtk.ComboBoxText()
   for _, u in ipairs(units.UNITS) do unitCombo:append(u, u) end
-  local spacingPtLabel = label("", { hexpand = true })
+  local spacingPtLabel = label("")
 
   local marginLabel = label("Margin:")
   local marginSpin = spin(0, 10000, 1, 2)
@@ -77,9 +77,10 @@ function M.open(ctx)
   local lineWidthSpin = spin(config.LIMITS.lineWidth[1], config.LIMITS.lineWidth[2], 0.1, 2)
 
   local colorCheck = Gtk.CheckButton { label = "Line colour" }
-  local colorBtn = Gtk.ColorButton()
+  -- initial colours = Xournal++ defaults (xopp_dodgerblue / xopp_deeppink)
+  local colorBtn = Gtk.ColorButton { rgba = Gdk.RGBA { red = 0x1e / 255, green = 0x90 / 255, blue = 1, alpha = 1 } }
   local marginColorCheck = Gtk.CheckButton { label = "Margin colour" }
-  local marginColorBtn = Gtk.ColorButton()
+  local marginColorBtn = Gtk.ColorButton { rgba = Gdk.RGBA { red = 1, green = 0x14 / 255, blue = 0x93 / 255, alpha = 1 } }
 
   local targetCombo = Gtk.ComboBoxText()
   for _, t in ipairs(TARGETS) do targetCombo:append(t, TARGET_LABELS[t]) end
@@ -102,15 +103,16 @@ function M.open(ctx)
   local row = 0
   local function addRow(l, ...)
     if l then grid:attach(type(l) == "string" and label(l) or l, 0, row, 1, 1) end
-    local col = 1
+    local box = Gtk.Box { orientation = Gtk.Orientation.HORIZONTAL, spacing = 6 }
     for _, w in ipairs({ ... }) do
-      grid:attach(w, col, row, 1, 1)
-      col = col + 1
+      local expand = w.hexpand == true
+      box:pack_start(w, expand, expand, 0)
     end
+    grid:attach(box, 1, row, 1, 1)
     row = row + 1
   end
   local function addWide(w, col, width)
-    grid:attach(w, col or 0, row, width or 4, 1)
+    grid:attach(w, col or 0, row, width or 2, 1)
     row = row + 1
   end
 
@@ -125,8 +127,8 @@ function M.open(ctx)
   addRow(marginColorCheck, marginColorBtn)
   addWide(Gtk.Separator { orientation = Gtk.Orientation.HORIZONTAL })
   addRow("Apply to:", targetCombo, rangeBox)
-  addWide(includeBgCheck, 1, 3)
-  addWide(previewCheck, 1, 3)
+  addWide(includeBgCheck, 1, 1)
+  addWide(previewCheck, 1, 1)
   addWide(status)
 
   local buttons = Gtk.Box { orientation = Gtk.Orientation.HORIZONTAL, spacing = 6 }
