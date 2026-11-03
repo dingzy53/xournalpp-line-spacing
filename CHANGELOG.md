@@ -9,5 +9,9 @@ First release. Tested on Xournal++ 1.3.7 (Fedora) with lua-lgi 0.9.2.
   a range; live preview with revert on close.
 - Named presets with built-ins (24/20/32 pt, college and wide ruled, 5 mm graph and dots),
   default preset, per-preset menu entries.
-- Export of Xournal++ page templates (`.xopt`) for new documents.
+- "New document with these settings" / "New document (default preset)": File → New, then
+  restyle the blank first page; waits for the save prompt and never touches the old document.
+- Configure shortcut is Ctrl+Alt+S (Ctrl+Alt+L locks the screen on KDE).
+- `.xopt` page-template export is built but not offered: Configure Page Template segfaults
+  on custom configs in Xournal++ <= 1.3.8 (fixed upstream in #7888).
 - Fallback dialog when GTK bindings are missing; Looser/Tighter/Reset shortcuts.

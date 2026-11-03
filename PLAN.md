@@ -11,12 +11,14 @@ All phases are done. Verification:
 - `lua tests/run.lua`: 41 unit tests
 - `tests/gtk_smoke.lua`: the real dialog driven against a fake app
 - `scripts/selftest.sh`: runs inside real Xournal++ 1.3.7 with lua-lgi 0.9.2
-- Manual checks of the fallback `openDialog` UI and the `.xopt` → Configure Page Template round trip are still open (see §7, items 7–8).
+- Still to check by hand: clicking through the fallback `openDialog` UI (§7 item 8). From the source, reopening it from its own callback is supported (`XojMsgBox` defers the callback until the old dialog has closed).
 
 Changes from the original plan, all found during implementation:
 - Presets are stored in `getFolder("config")/presets.lua`. That folder is already per plugin (`plugin-settings/LineSpacing/`) and Xournal++ creates it, so no subfolder or `mkdir` is needed.
 - Colours are written as bare `rrggbb` (verified by rendering). `f1`/`f2` are mirrored to `af1`/`af2` so a custom colour also applies on dark pages.
 - `registerUi{parentPath=…}` is master-only, so 1.3.7 gets flat "Line spacing preset: …" menu entries.
+- **`.xopt` export is disabled.** `PageTemplateDialog::updateDataFromModel` in 1.3.7 dereferences `getInfoOn(...)`, which returns `nullptr` for any config not listed in `pagetemplates.ini`. That segfaults when the template is loaded, and when the dialog is opened with such a template. Upstream fixed it in fa23208 (#7888, 2026-11-03), but no release includes it yet (latest is v1.3.8). The replacement is "New document with these settings" (`apply.newDocument`): `activateAction("new-file")`, then style page 1 only once the document is blank and untitled, polling while the save prompt is open. Self-tested: inserted pages copy the spacing.
+- The Configure shortcut is Ctrl+Alt+S, because KDE (the desktop here) binds Ctrl+Alt+L to lock the screen.
 - Added `tests/selftest/`, an in-app harness plugin installed into a throwaway `XDG_CONFIG_HOME`. It confirmed that `setCurrentPage` is synchronous, that the config argument is honoured, that preview reverts, and that quitting with the dialog open exits cleanly (exit 0).
 
 ---

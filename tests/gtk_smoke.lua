@@ -29,11 +29,9 @@ local app, fake = fakeapp.new({
 
 local dir = os.tmpname(); os.remove(dir); os.execute("mkdir -p " .. dir)
 local store = presets.open(dir)
-local exported
 local ctx = {
   app = app, store = store, gtk = gtk,
   notify = function(m) print("notify: " .. m) end,
-  saveDialog = function(name, cb) exported = dir .. "/" .. name; cb(exported) end,
 }
 
 local d = dialog.open(ctx)
@@ -74,15 +72,17 @@ d.close(); pump()
 check(fake.pages[1].config == "r1=28.3465,m1=-72", "close reverts preview: " .. fake.pages[1].config)
 check(not dialog.isOpen(), "dialog closed")
 
--- reopen, select builtin preset, export .xopt
+-- reopen, select builtin preset, create a new document with it
 d = dialog.open(ctx); w = d.widgets; pump()
 w.presetCombo.active_id = "Graph 5 mm"; pump()
 check(w.formatCombo.active_id == "graph", "preset loads into form")
-w.exportBtn:clicked(); pump()
-local f = exported and io.open(exported)
-local text = f and f:read("a"); if f then f:close() end
-check(text and text:find("backgroundType=graph\nbackgroundTypeConfig=r1=14.1732\n", 1, true), "xopt exported")
-check(exported and exported:match("Graph%-5%-mm%.xopt$"), "xopt file name")
+fake.filename = "/tmp/existing.xopp"; fake.asyncNew = true
+w.newDocBtn:clicked(); pump(300)
+check(fake.pages[1].format == "lined", "old document untouched while save prompt is open")
+fake.finishNew(); pump(400)
+check(#fake.pages == 1 and fake.pages[1].format == "graph" and fake.pages[1].config == "r1=14.1732",
+  "new document gets preset: " .. fake.pages[1].format .. " " .. fake.pages[1].config)
+fake.asyncNew = false
 
 -- validation error shown, nothing applied
 local before = fake.pages[1].config

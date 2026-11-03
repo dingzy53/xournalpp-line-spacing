@@ -86,6 +86,17 @@ lineSpacingApplyDefault = guarded(function()
   applyPreset(getStore():getDefault())
 end)
 
+lineSpacingNewDocument = guarded(function()
+  local schedule
+  local gtk = require("ui.gtk").load()
+  if gtk then
+    schedule = function(fn, ms) gtk.GLib.timeout_add(gtk.GLib.PRIORITY_DEFAULT, ms, fn) end
+  end
+  apply.newDocument(app, getStore():getDefault().style, schedule, function(ok, msg)
+    if not ok and msg then notify(msg, true) end
+  end)
+end)
+
 lineSpacingApplyPreset = guarded(function(index)
   applyPreset(getStore():get(menuPresets[index]))
 end)
@@ -94,13 +105,14 @@ end)
 
 function initUi()
   app.registerUi({ menu = "Line spacing: Configure…", callback = "lineSpacingConfigure",
-    accelerator = "<Control><Alt>l" })
+    accelerator = "<Control><Alt>s" }) -- Ctrl+Alt+L locks the screen on KDE
   app.registerUi({ menu = "Line spacing: Looser (+" .. STEP_PT .. " pt)", callback = "lineSpacingStep", mode = 1,
     accelerator = "<Control><Alt>equal" })
   app.registerUi({ menu = "Line spacing: Tighter (−" .. STEP_PT .. " pt)", callback = "lineSpacingStep", mode = -1,
     accelerator = "<Control><Alt>minus" })
   app.registerUi({ menu = "Line spacing: Reset to default", callback = "lineSpacingReset" })
   app.registerUi({ menu = "Line spacing: Apply default preset", callback = "lineSpacingApplyDefault" })
+  app.registerUi({ menu = "Line spacing: New document (default preset)", callback = "lineSpacingNewDocument" })
 
   -- One entry per preset. Xournal++ 1.3.7 has no submenus for plugins (parentPath is
   -- master-only), and entries can only be registered here, so new presets need a restart.

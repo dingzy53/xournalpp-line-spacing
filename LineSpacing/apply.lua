@@ -119,6 +119,56 @@ function M.verifyCurrent(app, format, cfg)
   return false, p and (p.format .. " / " .. p.config) or "no page"
 end
 
+--- True if the open document is a fresh one: never saved, one page, nothing drawn,
+-- not a PDF/image background. Safe to restyle without touching user content.
+function M.isBlankUntitled(app)
+  local doc = app.getDocumentStructure()
+  local pages = doc.pages or {}
+  if (doc.xoppFilename or "") ~= "" or (doc.pdfBackgroundFilename or "") ~= "" then return false end
+  if #pages ~= 1 then return false end
+  local p = pages[1]
+  return not p.isAnnotated and not M.isBackgroundPage(p.pageTypeFormat)
+end
+
+--- Create a new document (File → New) and give its first page `style`.
+--
+-- Xournal++ may first ask whether to save the current document; that prompt is
+-- asynchronous, so the new document can appear after activateAction returns.
+-- `schedule(fn, ms)` (optional, e.g. a GLib timer) is used to wait for it; `fn`
+-- returns true to keep waiting. `done(ok, msg)` is called with the outcome.
+-- The style is only ever applied to a blank, untitled, single-page document.
+-- (Pages inserted later copy it when "Copy last page settings" is on.)
+function M.newDocument(app, style, schedule, done)
+  local ok, err = config.validate(style)
+  if not ok then done(false, err) return end
+
+  app.activateAction("new-file")
+
+  local function tryApply()
+    if not M.isBlankUntitled(app) then return false end
+    M.applyStyle(app, style, "current", { includeBackgrounds = false })
+    done(true, "New document created.")
+    return true
+  end
+
+  if tryApply() then return end
+  if not schedule then
+    done(false, "Finish the save prompt, then use \"Apply default preset\" or the Configure window " ..
+      "on the new document.")
+    return
+  end
+  local waited, step, limit = 0, 250, 120000
+  schedule(function()
+    if tryApply() then return false end
+    waited = waited + step
+    if waited >= limit then
+      done(false, nil) -- user most likely cancelled the save prompt; stay quiet
+      return false
+    end
+    return true
+  end, step)
+end
+
 --- Human summary of an apply result.
 function M.describeResult(r)
   local parts = { string.format("%d page(s) changed", r.changed) }

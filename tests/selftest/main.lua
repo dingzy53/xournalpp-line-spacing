@@ -95,7 +95,29 @@ local function steps()
   app.activateAction("save")
   coroutine.yield("wait")
 
-  -- 6. quit with the dialog still open (must not crash; checked via exit code by the script)
+  -- 6. new document with a style (saved doc -> no prompt -> synchronous)
+  local g = require("ui.gtk").load()
+  local newResult
+  local ns = config.defaultStyle("lined"); ns.spacing = 28; ns.marginSide = "right"
+  apply.newDocument(app, ns, g and function(fn, ms) g.GLib.timeout_add(g.GLib.PRIORITY_DEFAULT, ms, fn) end,
+    function(ok, msg) newResult = { ok, msg } end)
+  for _ = 1, 20 do
+    if newResult then break end
+    coroutine.yield("wait")
+  end
+  local np = apply.snapshot(app)
+  check(newResult and newResult[1], "newDocument reported success: " .. tostring(newResult and newResult[2]))
+  check(np.count == 1 and np.pages[1].config == "r1=28,m1=-72", "new document page 1: " .. tostring(np.pages[1] and np.pages[1].config))
+  app.activateAction("new-page-after")
+  coroutine.yield()
+  np = apply.snapshot(app)
+  check(np.count == 2 and np.pages[2].config == "r1=28,m1=-72", "inserted page copies spacing: " .. tostring(np.pages[2] and np.pages[2].config))
+
+  -- discard the unsaved new document without a prompt so quitting stays non-interactive
+  app.openFile(os.getenv("LS_DOC"), 1, true)
+  coroutine.yield()
+
+  -- 7. quit with the dialog still open (must not crash; checked via exit code by the script)
   if gtk then
     require("ui.dialog").open({ app = app, gtk = gtk, store = require("presets").open(nil), notify = log })
     coroutine.yield()

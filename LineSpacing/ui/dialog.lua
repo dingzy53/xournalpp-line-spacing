@@ -5,7 +5,7 @@
 local apply = require("apply")
 local config = require("config")
 local units = require("units")
-local xopt = require("xopt")
+local xopt = require("xopt") -- A4 size only; .xopt export disabled, see README
 
 local M = {}
 
@@ -94,7 +94,7 @@ function M.open(ctx)
   local status = label("", { wrap = true, max_width_chars = 50, selectable = true })
 
   local readBtn = Gtk.Button { label = "Read from page" }
-  local exportBtn = Gtk.Button { label = "Export as page template (.xopt)…" }
+  local newDocBtn = Gtk.Button { label = "New document with these settings" }
   local closeBtn = Gtk.Button { label = "Close" }
   local applyBtn = Gtk.Button { label = "Apply" }
   applyBtn:get_style_context():add_class("suggested-action")
@@ -133,7 +133,7 @@ function M.open(ctx)
 
   local buttons = Gtk.Box { orientation = Gtk.Orientation.HORIZONTAL, spacing = 6 }
   buttons:pack_start(readBtn, false, false, 0)
-  buttons:pack_start(exportBtn, false, false, 0)
+  buttons:pack_start(newDocBtn, false, false, 0)
   buttons:pack_end(applyBtn, false, false, 0)
   buttons:pack_end(closeBtn, false, false, 0)
 
@@ -399,31 +399,24 @@ function M.open(ctx)
     setStatus("\"" .. name .. "\" is now the default preset (Plugins menu → Apply default preset).")
   end
 
-  local function doExport()
+  -- "Template for future use": new documents get these settings on page 1; pages
+  -- inserted afterwards copy them when "Copy last page settings" is on (the default).
+  -- Exporting a .xopt for Journal -> Configure Page Template would be nicer, but that
+  -- dialog segfaults on custom configs in every release up to 1.3.8 (fixed upstream
+  -- in #7888, 2026-11-03), so it is not offered.
+  local function doNewDocument()
     local s = readForm()
     local ok, err = config.validate(s, pageWidth())
     if not ok then setStatus(err, true) return end
-    local p = apply.currentPage(app)
-    local name = presetCombo.active_id or store:suggestName(s, unit)
-    local text = xopt.build({
-      style = s,
-      width = p and p.width, height = p and p.height,
-      copyLastPageSettings = true,
-    })
-    local saveDialog = ctx.saveDialog or function(suggested, cb)
-      _G.__lineSpacingXoptPath = cb
-      app.fileDialogSave("__lineSpacingXoptPath", suggested)
-    end
-    saveDialog(xopt.fileName(name), function(path)
-      if not path or path == "" then return end
-      if not path:match("%.xopt$") then path = path .. ".xopt" end
-      local wok, werr = xopt.write(path, text)
-      if wok then
-        setStatus("Saved " .. path .. ".\nTo use it for new documents: Journal → Configure Page Template → " ..
-          "Load from file → OK.")
-      else
-        setStatus("Could not write " .. path .. ": " .. tostring(werr), true)
-      end
+    revertPreview()
+    previewCheck.active = false
+    setStatus("Creating a new document…")
+    apply.newDocument(app, s, function(fn, ms)
+      GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, fn)
+    end, function(done, msg)
+      if instance ~= self then return end -- dialog closed meanwhile
+      if msg then setStatus(msg, not done) else setStatus("") end
+      if done then refreshPageRange() end
     end)
   end
 
@@ -499,7 +492,7 @@ function M.open(ctx)
   nameEntry.on_activate = doSavePreset
   deleteBtn.on_clicked = doDeletePreset
   defaultBtn.on_clicked = doSetDefault
-  exportBtn.on_clicked = doExport
+  newDocBtn.on_clicked = doNewDocument
   closeBtn.on_clicked = close
 
   function window:on_delete_event()
@@ -529,7 +522,7 @@ function M.open(ctx)
     marginSpin = marginSpin, sideCombo = sideCombo, lineWidthSpin = lineWidthSpin,
     colorCheck = colorCheck, colorBtn = colorBtn, targetCombo = targetCombo, fromSpin = fromSpin,
     toSpin = toSpin, includeBgCheck = includeBgCheck, previewCheck = previewCheck, status = status,
-    applyBtn = applyBtn, closeBtn = closeBtn, exportBtn = exportBtn, readBtn = readBtn,
+    applyBtn = applyBtn, closeBtn = closeBtn, newDocBtn = newDocBtn, readBtn = readBtn,
   }
   self.readForm = readForm
   self.close = close
