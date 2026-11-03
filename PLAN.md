@@ -4,6 +4,21 @@ Goal: let the user **configure the line height (spacing) of page backgrounds thr
 
 Research baseline: xournalpp `master` @ `fa23208` (2026-11-03) and tag `v1.3.7` (the version installed on this machine: Fedora RPM `xournalpp-1.3.7-1.fc44`, Lua 5.4). Every API used below was verified to exist in **v1.3.7**.
 
+
+## Status (2026-11-03): v0.1.0 implemented
+
+All phases are done. Verification:
+- `lua tests/run.lua`: 41 unit tests
+- `tests/gtk_smoke.lua`: the real dialog driven against a fake app
+- `scripts/selftest.sh`: runs inside real Xournal++ 1.3.7 with lua-lgi 0.9.2
+- Manual checks of the fallback `openDialog` UI and the `.xopt` → Configure Page Template round trip are still open (see §7, items 7–8).
+
+Changes from the original plan, all found during implementation:
+- Presets are stored in `getFolder("config")/presets.lua`. That folder is already per plugin (`plugin-settings/LineSpacing/`) and Xournal++ creates it, so no subfolder or `mkdir` is needed.
+- Colours are written as bare `rrggbb` (verified by rendering). `f1`/`f2` are mirrored to `af1`/`af2` so a custom colour also applies on dark pages.
+- `registerUi{parentPath=…}` is master-only, so 1.3.7 gets flat "Line spacing preset: …" menu entries.
+- Added `tests/selftest/`, an in-app harness plugin installed into a throwaway `XDG_CONFIG_HOME`. It confirmed that `setCurrentPage` is synchronous, that the config argument is honoured, that preview reverts, and that quitting with the dialog open exits cleanly (exit 0).
+
 ---
 
 ## 1. Background: how Xournal++ draws ruled paper
@@ -149,7 +164,7 @@ Preset = { name = "College ruled", style = Style, unit = "mm", createdAt = "..."
 - `parse("r1=32,m1=-72") -> {r1="32", m1="-72"}` (strings; keep order for stable output)
 - `toStyle(format, cfgTable) -> Style` and `fromStyle(Style) -> format, "r1=32,m1=72,lw=0.5"`
 - Emit only non-default keys; numbers formatted with `%.4g` to avoid `32.000000`.
-- Colour format: verify against `BackgroundConfig::loadValueHex` before emitting (likely `f1=0x...`/hex without `#` — **check in Phase 1**).
+- Colour format: `rrggbb` hex without `#` (parsed with `std::hex`; verified by render check).
 - Round-trip invariant: `parse(fromStyle(toStyle(x))) == x` for known keys; unknown keys passed through.
 
 Validation: spacing ∈ [4, 200] pt; line width ∈ [0.1, 5] pt; margin ∈ [0, pageWidth]. Reject NaN / non-numeric input with an inline error label (GTK) or ignore (fallback).
@@ -159,7 +174,7 @@ Validation: spacing ∈ [4, 200] pt; line width ∈ [0.1, 5] pt; margin ∈ [0, 
 Two layers, deliberately separate:
 
 **(a) Plugin presets** — the user-facing "templates":
-- File: `app.getFolder("config") .. "/line-spacing/presets.lua"` (verified in v1.3.7: `getFolder("config")` → `Util::getConfigSubfolder("plugin-settings")`, i.e. `~/.config/xournalpp/plugin-settings/`; log the resolved path at runtime).
+- File: `app.getFolder("config") .. "/presets.lua"` (verified in v1.3.7: `getFolder("config")` → `Util::getConfigSubfolder("plugin-settings")`, i.e. `~/.config/xournalpp/plugin-settings/`; log the resolved path at runtime).
 - Format: a Lua table literal returned by `return { version = 1, presets = { ... } }`, loaded with `load(text, name, "t", {})` (empty env, text-only — no code execution from the file). Written via temp file + `os.rename` (atomic).
 - Ships with built-ins (not stored, always present): `Default (24 pt)`, `Narrow (20 pt)`, `College ruled (7.1 mm)`, `Wide ruled (8.7 mm)`, `Large (32 pt)`.
 - Operations: save current dialog values as new preset, overwrite, rename, delete, set "default preset" (used by "Apply default" accelerator).
