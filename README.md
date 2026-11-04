@@ -1,10 +1,22 @@
-# Line Spacing — Xournal++ plugin
+# Line Spacing
+
+[![Release](https://img.shields.io/github/v/release/dingzy53/xournalpp-line-spacing)](https://github.com/dingzy53/xournalpp-line-spacing/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/dingzy53/xournalpp-line-spacing/total)](https://github.com/dingzy53/xournalpp-line-spacing/releases)
+[![Xournal++ 1.3.7+](https://img.shields.io/badge/Xournal%2B%2B-1.3.7%2B-1e88e5)](https://xournalpp.github.io)
+[![License: GPL-2.0-or-later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
 
 Change the **line spacing (line height)**, margin line, line width and colours of Xournal++'s ruled, lined, graph and dotted page backgrounds from a settings window. You can also **save the settings as presets** for future use and **start new documents** with them.
 
 Xournal++ can already draw backgrounds with any spacing, but its own menus only offer the fixed 24 pt ruling. This plugin exposes the hidden per-page background settings (`r1`, `m1`, `lw`, `f1`, `f2`).
 
 ![Line Spacing dialog](docs/dialog.png)
+
+## Features
+
+- Any line spacing, margin, line width and colours for ruled, graph and dotted paper.
+- Live preview. Apply to the current page, all pages or a page range.
+- Presets, and new documents that start with a preset.
+- Saved in the `.xopp` file, so documents look the same on machines without the plugin.
 
 ## Requirements
 
@@ -16,7 +28,23 @@ Xournal++ can already draw backgrounds with any spacing, but its own menus only 
 
   Without them, the plugin falls back to a simpler dialog with buttons.
 
-## Install
+## Installation
+
+1. Install the [requirements](#requirements) for your system.
+2. Download `LineSpacing.zip` from the [latest release](https://github.com/dingzy53/xournalpp-line-spacing/releases/latest) and unzip it. You get a folder named `LineSpacing`.
+3. Move that folder into the Xournal++ plugins folder, so that you have `plugins/LineSpacing/plugin.ini`. Create the `plugins` folder if it doesn't exist.
+
+   | System | Plugins folder |
+   |---|---|
+   | Linux, macOS | `~/.config/xournalpp/plugins/` |
+   | Linux, Flatpak | `~/.var/app/com.github.xournalpp.xournalpp/config/xournalpp/plugins/` |
+   | Windows | `%LOCALAPPDATA%\xournalpp\plugins\` |
+
+4. Restart Xournal++. The plugin is on by default. If its entries are missing from the **Plugin** menu, enable **LineSpacing** in **Plugin → Plugin Manager** and restart again.
+
+**Update or remove:** replace the `LineSpacing` folder with the new one, or delete it.
+
+**From a clone (Linux, macOS):** the install script links or copies the plugin folder for you, and finds the Flatpak folder if needed.
 
 ```sh
 scripts/install.sh            # symlinks LineSpacing/ into ~/.config/xournalpp/plugins/
@@ -26,7 +54,7 @@ scripts/install.sh --uninstall
 
 Restart Xournal++. If the plugin doesn't appear, enable it under *Plugin → Plugin Manager*.
 
-## Use
+## Usage
 
 Everything is in the **Plugin** menu:
 
@@ -61,6 +89,11 @@ There are two ways to keep settings for later:
 
 The spacing is saved inside the `.xopp` file. Documents reopen with the same lines, even on machines without this plugin.
 
+## Privacy and security
+
+- **Network:** none. The plugin starts no other programs.
+- **Files:** presets are saved in the Xournal++ config folder (`~/.config/xournalpp/plugin-settings/LineSpacing/presets.lua` on Linux). The spacing itself is saved in the `.xopp` file.
+
 ## Limitations
 
 - The gap above the first line (80 pt) and below the last line (60 pt) is fixed in Xournal++ and cannot be changed by plugins.
@@ -81,6 +114,13 @@ lua scripts/screenshot.lua # regenerates docs/dialog.png
 To use an unpacked lgi without installing it system-wide, run `dnf download lua-lgi && rpm2cpio lua-lgi*.rpm | cpio -idm`. Then set `LGI_ROOT=<dir>` for `selftest.sh`, or `LUA_PATH`/`LUA_CPATH` for the Lua scripts.
 
 Code layout: `LineSpacing/` is the plugin folder. `config.lua`, `units.lua`, `presets.lua` and `xopt.lua` are pure Lua. `apply.lua` talks to the `app` API. `ui/` contains the GTK window and the fallback dialog. The design is described in [PLAN.md](PLAN.md).
+
+### Releasing
+
+1. Set `version=` in `LineSpacing/plugin.ini` and commit.
+2. Tag that commit with the same version, without a `v`, and push both: `git tag 0.1.0 && git push origin main 0.1.0`.
+
+The Release workflow runs the tests and publishes `LineSpacing.zip`.
 
 ## License
 
