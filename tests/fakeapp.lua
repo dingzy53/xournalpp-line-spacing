@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- A fake `app` object mimicking the parts of the Xournal++ Lua API we use.
 local M = {}
 

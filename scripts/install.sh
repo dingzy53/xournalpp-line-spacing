@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Ding Zheng Yuan
 # Install the LineSpacing plugin for the current user.
 #   scripts/install.sh            symlink (development: edits take effect on restart)
 #   scripts/install.sh --copy     copy files instead

@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Applying styles to pages through the Xournal++ Lua API.
 --
 -- Every function takes `app` explicitly so it can be unit-tested with a fake.

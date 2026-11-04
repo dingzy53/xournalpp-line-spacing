@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- In-app self test. Runs inside a real Xournal++ against the real `app` API.
 -- Environment (set by scripts/selftest.sh):
 --   LS_PLUGIN_DIR  path to the LineSpacing plugin folder

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Ding Zheng Yuan
 # Run the in-app self test in a real Xournal++ with a throwaway config dir.
 # Your own ~/.config/xournalpp is not touched. A Xournal++ window appears briefly.
 #

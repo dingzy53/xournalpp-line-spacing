@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Button-only UI built on app.openDialog, used when GTK bindings are unavailable.
 -- app.openDialog(message, buttons, callbackName) is asynchronous and renders Pango
 -- markup; the callback is a *global* function name receiving the button number.

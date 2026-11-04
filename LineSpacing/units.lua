@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Length unit conversions. Xournal++ page coordinates are in PostScript points (1/72 in).
 local M = {}
 

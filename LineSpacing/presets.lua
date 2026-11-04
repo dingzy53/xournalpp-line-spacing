@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Named presets ("templates") of background styles, persisted as a Lua table literal.
 --
 -- The file is loaded with an empty environment and text mode only, so a tampered

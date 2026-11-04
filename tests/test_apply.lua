@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+
 local apply = require("apply")
 local config = require("config")
 local fakeapp = require("fakeapp")

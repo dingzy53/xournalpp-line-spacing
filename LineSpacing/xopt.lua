@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Build Xournal++ page-template (.xopt) files.
 --
 -- Format verified against xournalpp v1.3.7 src/core/control/settings/PageTemplateSettings.cpp

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Ding Zheng Yuan
 # Render a .xopp file to PDF + PNGs headlessly, for checking background configs.
 # Usage: scripts/render-check.sh [file.xopp] [outdir]
 set -euo pipefail

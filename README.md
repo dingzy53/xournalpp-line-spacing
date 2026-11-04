@@ -84,4 +84,4 @@ Code layout: `LineSpacing/` is the plugin folder. `config.lua`, `units.lua`, `pr
 
 ## License
 
-GPL-2.0-or-later, the same as Xournal++.
+[GPL-2.0-or-later](LICENSE), the same as Xournal++. © 2026 Ding Zheng Yuan

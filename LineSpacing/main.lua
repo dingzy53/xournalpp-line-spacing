@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Line Spacing — Xournal++ plugin entry point.
 -- Requires Xournal++ >= 1.3.7 (uses the config argument of app.changeCurrentPageBackground).
 --

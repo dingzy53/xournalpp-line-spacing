@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Minimal test runner. Usage (from repo root):  lua tests/run.lua
 local root = arg[0]:match("^(.*)/tests/run%.lua$") or "."
 package.path = root .. "/LineSpacing/?.lua;" .. root .. "/tests/?.lua;" .. package.path

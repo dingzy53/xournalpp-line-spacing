@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Locate GTK 3 bindings for Lua.
 --   Fedora/Debian packages: lua-lgi        -> require("lgi")
 --   Flathub Xournal++:      LuaGObject     -> require("LuaGObject")  (lgi fork)

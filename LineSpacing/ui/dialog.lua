@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- GTK 3 settings dialog (via lgi / LuaGObject).
 --
 -- Non-modal and non-blocking: no Gtk.main(), no dialog:run(). Xournal++ already

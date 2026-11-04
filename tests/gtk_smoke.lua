@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Drive the real GTK dialog against a fake `app`. Needs a display and lgi.
 -- Usage: lua tests/gtk_smoke.lua        (exit code 0 = pass)
 local root = arg[0]:match("^(.*)/tests/gtk_smoke%.lua$") or "."

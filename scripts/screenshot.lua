@@ -1,3 +1,6 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Copyright (C) 2026 Ding Zheng Yuan
+--
 -- Render the dialog (with a fake app) to docs/dialog.png. Usage: lua scripts/screenshot.lua
 local root = arg[0]:match("^(.*)/scripts/screenshot%.lua$") or "."
 package.path = root .. "/LineSpacing/?.lua;" .. root .. "/tests/?.lua;" .. package.path
