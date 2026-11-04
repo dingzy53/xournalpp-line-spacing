@@ -35,4 +35,4 @@ if [[ "$dest_dir" == "$native_dir" ]] && ! lua -e 'require("lgi")' >/dev/null 2>
   echo "Note: lua-lgi not found; the plugin will use its simpler fallback dialog."
   echo "      For the full settings window: sudo dnf install lua-lgi   (Debian/Ubuntu: sudo apt install lua-lgi)"
 fi
-echo "Restart Xournal++ and look in the Plugin menu for \"Line spacing: Configure…\" (Ctrl+Alt+L)."
+echo "Restart Xournal++ and look in the Plugin menu for \"Line spacing: Configure…\" (Ctrl+Alt+S)."
