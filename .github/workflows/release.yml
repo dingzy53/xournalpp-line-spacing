@@ -1,4 +1,4 @@
-# Publishes a release when a version tag is pushed: run the tests, then
+# Publishes a release when a version tag is pushed: run the tests (Lua 5.4 and 5.5), then
 # attach LineSpacing.zip (the plugin folder, ready to unzip into the plugins folder).
 # The tag must equal version= in LineSpacing/plugin.ini, with no "v" prefix.
 name: Release
@@ -30,6 +30,17 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y lua5.4
           lua5.4 tests/run.lua
+
+      - name: Build Lua 5.5.1
+        run: |
+          curl -fsSL https://www.lua.org/ftp/lua-5.5.1.tar.gz | tar -xz -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/lua-5.5.1" linux
+
+      - name: Check syntax and run tests (Lua 5.5)
+        run: |
+          lua55="$RUNNER_TEMP/lua-5.5.1/src"
+          "$lua55/luac" -p LineSpacing/*.lua LineSpacing/ui/*.lua tests/*.lua
+          "$lua55/lua" tests/run.lua
 
       - name: Package the plugin folder
         run: zip -r LineSpacing.zip LineSpacing
