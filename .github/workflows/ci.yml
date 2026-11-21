@@ -1,0 +1,35 @@
+# Checks syntax and runs the unit tests under Lua 5.4 and Lua 5.5.
+# Xournal++ 1.3.8 on macOS bundles Lua 5.5, where for-loop variables are const.
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run tests (Lua 5.4)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.4
+          lua5.4 tests/run.lua
+
+      - name: Build Lua 5.5.1
+        run: |
+          curl -fsSL https://www.lua.org/ftp/lua-5.5.1.tar.gz | tar -xz -C "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/lua-5.5.1" linux
+
+      - name: Check syntax and run tests (Lua 5.5)
+        run: |
+          lua55="$RUNNER_TEMP/lua-5.5.1/src"
+          "$lua55/luac" -p LineSpacing/*.lua LineSpacing/ui/*.lua tests/*.lua
+          "$lua55/lua" tests/run.lua
