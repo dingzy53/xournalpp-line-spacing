@@ -45,18 +45,21 @@ return {
     T.ok(not store:put("bad", style(1)))
     T.ok(not store:put("   ", style(30)))
   end },
-  { "rename and remove and default", function(T)
+  { "remove, default, and unit persistence", function(T)
     local dir = T.tmpdir()
     local store = presets.open(dir)
+    T.eq(store:getUnit(), "pt")
+    T.ok(store:setUnit("mm"))
+    T.ok(not store:setUnit("cm"))
     store:put("A", style(20)); store:put("B", style(22))
     T.ok(store:setDefault("A"))
-    T.ok(store:rename("A", "C"))
-    T.eq(store:getDefault().name, "C")
-    T.ok(not store:rename("C", "B"), "rename onto existing name")
-    T.ok(store:remove("C"))
+    T.eq(store:getDefault().name, "A")
+    T.ok(store:remove("A"))
     T.eq(store:getDefault().name, presets.BUILTINS[1].name)
     T.ok(not store:remove("nope"))
-    T.eq(#presets.open(dir):userPresets(), 1)
+    local reloaded = presets.open(dir)
+    T.eq(#reloaded:userPresets(), 1)
+    T.eq(reloaded:getUnit(), "mm")
   end },
   { "corrupted file is backed up", function(T)
     local dir = T.tmpdir()
@@ -75,10 +78,6 @@ return {
     local _, warning = presets.open(dir)
     T.ok(warning, "load must fail without os")
     T.ok(io.open(marker, "r") == nil, "code in presets file must not run")
-  end },
-  { "infinite loop in presets file is aborted", function(T)
-    local _, err = presets.decode("while true do end")
-    T.ok(err, "expected an error")
   end },
   { "invalid entries dropped with warning", function(T)
     local dir = T.tmpdir()
@@ -106,5 +105,14 @@ return {
     T.eq(n1, "Ruled 28 pt")
     store:put(n1, style(28))
     T.eq(store:suggestName(style(28), "pt"), "Ruled 28 pt (2)")
+  end },
+  { "findMatching locates built-in and user presets", function(T)
+    local store = presets.open(T.tmpdir())
+    T.eq(store:findMatching(config.defaultStyle("lined")).name, "Default (24 pt)")
+    local fmt, cfg = config.fromStyle(store:get("College ruled (7.1 mm)").style)
+    T.eq(store:findMatching(config.toStyle(fmt, cfg)).name, "College ruled (7.1 mm)")
+    store:put("Mine", style(30), "pt")
+    T.eq(store:findMatching(style(30)).name, "Mine")
+    T.eq(store:findMatching(style(19)), nil)
   end },
 }

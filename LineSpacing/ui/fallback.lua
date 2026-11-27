@@ -2,8 +2,9 @@
 -- Copyright (C) 2026 Ding Zheng Yuan
 --
 -- Button-only UI built on app.openDialog, used when GTK bindings are unavailable.
--- app.openDialog(message, buttons, callbackName) is asynchronous and renders Pango
--- markup; the callback is a *global* function name receiving the button number.
+-- app.openDialog(message, buttons, callbackName) is asynchronous and displays plain
+-- text (gtk_message_dialog_format_secondary_text, not Pango markup); the callback
+-- is a *global* function name receiving the button number.
 local apply = require("apply")
 local config = require("config")
 local units = require("units")
@@ -11,28 +12,19 @@ local units = require("units")
 local M = {}
 
 local BUTTONS = {
-  [1] = "−4 pt",
-  [2] = "−1 pt",
-  [3] = "+1 pt",
-  [4] = "+4 pt",
-  [5] = "Apply to all pages",
-  [6] = "Save as preset",
-  [7] = "Done",
+  [1] = "−2 pt",
+  [2] = "+2 pt",
+  [3] = "Apply to all pages",
+  [4] = "Apply default preset",
+  [5] = "Done",
 }
-local DELTA = { [1] = -4, [2] = -1, [3] = 1, [4] = 4 }
+local DELTA = { [1] = -2, [2] = 2 }
 
-local function escape(s)
-  return (tostring(s):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
-end
-M.escape = escape
-
---- Current page's style (unsupported formats are converted to a default lined style).
+--- Current page's style (unsupported formats default to lined).
 local function currentStyle(app)
   local p = apply.currentPage(app)
   if not p then return nil end
-  local style = config.toStyle(p.format, p.config)
-  if not config.isSupported(p.format) then style = config.defaultStyle("lined") end
-  return style, p
+  return config.toStyle(p.format, p.config), p
 end
 
 --- Change spacing of the current page by `delta` pt. Returns new style or nil, err.
@@ -56,12 +48,13 @@ function M.open(ctx)
   if not style then return end
 
   local msg = string.format(
-    "<b>Line spacing: %s</b> (%s)\nPage %d of %d — %s\n\n" ..
-    "Steps change the current page immediately (Ctrl+Z undoes).\n" ..
-    "<small>Install lua-lgi for the full settings dialog.</small>",
-    escape(units.format(style.spacing, "pt")),
-    escape(units.format(style.spacing, "mm")),
-    p.index, p.count, escape(config.LABELS[style.format] or p.format))
+    "Line spacing: %s (%s)\nPage %d of %d — %s\n\n" ..
+    "Steps change the current page immediately (%s undoes).\n" ..
+    "Install lua-lgi (or LuaGObject) for the full settings dialog.",
+    units.format(style.spacing, "pt"),
+    units.format(style.spacing, "mm"),
+    p.index, p.count, config.LABELS[style.format] or p.format,
+    apply.UNDO_KEY)
 
   -- Global trampoline required by app.openDialog.
   _G.__lineSpacingFallbackResponse = function(button)
@@ -69,14 +62,12 @@ function M.open(ctx)
       local _, err = M.step(app, DELTA[button])
       if err then ctx.notify(err, true) return end
       M.open(ctx) -- reopen with the new value
-    elseif button == 5 then
+    elseif button == 3 then
       local r, err = apply.applyStyle(app, style, "all")
       ctx.notify(r and apply.describeResult(r) or err, not r)
-    elseif button == 6 then
-      local name = ctx.store:suggestName(style, "pt")
-      local ok, err = ctx.store:put(name, style, "pt")
-      ctx.notify(ok and ("Saved preset \"" .. name .. "\". It appears in the menu after restarting Xournal++.") or err,
-        not ok)
+    elseif button == 4 then
+      local r, err = apply.applyStyle(app, ctx.store:getDefault().style, "current")
+      ctx.notify(r and apply.describeResult(r) or err, not r)
     end
   end
   app.openDialog(msg, BUTTONS, "__lineSpacingFallbackResponse")

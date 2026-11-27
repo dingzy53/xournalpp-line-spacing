@@ -1,47 +1,69 @@
-# PLAN: Lua 5.5 CI check and repository metadata
+# PLAN: Review & Simplification (`xournalpp-line-spacing` v0.1.0)
 
-> Branch: `chore/lua55-ci` (from `main` at `7900521`) · Date: 2026-11-20 · Status: Section 2 done (`3a1edbe`); section 3 awaits owner approval.
+> Reviewed against Xournal++ 1.3.8 (`luapi_application.h`, `Plugin.cpp`, `BackgroundConfig.h`), upcoming 1.4 (`parentPath`), and `dingzy53` repo standards.
 >
-> The initial v0.1.0 implementation plan is finished and shipped in `0.1.0`; see git history at `7900521` for its text.
+> Baseline on this machine (Lua 5.4.8, `lua-lgi` + display): `luac -p LineSpacing/*.lua LineSpacing/ui/*.lua tests/*.lua` clean; `lua tests/run.lua` passes `46 passed, 0 failed`; `lua tests/gtk_smoke.lua` passes `ALL OK` (16 checks).
+>
+> **Status:** Code, tests, CI, selftest, hero screenshot, and README updated on `refactor/simplify-1.3` with macOS UAT fixes (`xopp-mac-uat-2026-11-27`). Version bump/tag waits on macOS retest.
 
-## Context
+---
 
-In the 2026-11-20 test report on macOS 14 with Xournal++ 1.3.8 (bundled **Lua 5.5.1**), `xournalpp-line-spacing` 0.1.0 **passed all checks** (menu entries, GTK dialog with bundled `lgi`, live preview, close-without-apply restore, apply + undo, preset saving).
+## Decisions Resolved
 
-However, sibling plugin `xournalpp-bookmarks` failed to load on Xournal++ 1.3.8 because Lua 5.5 makes `for`-loop variables read-only (`<const>`), and our CI only runs Lua 5.4.
+1. [x] **Remove `Live preview` (`LineSpacing/ui/dialog.lua`):** Removed preview state/timers/`revertPreview()` so Apply creates 1 clean Undo step per changed page.
+2. [x] **Trim Plugin menu entries (`LineSpacing/main.lua`):** Replaced 13+ dynamic items with 5 static items (`parentPath = {"Line Spacing"}` + `toolbarId`s).
+3. [x] **`New document` action:** Kept as a Plugin menu item (`Line Spacing: New Document (Default Preset)`); simplified dialog footer to `[Read Page]` + `[Close] [Apply]`.
+4. [x] **Remove unused `xopt.lua`:** Deleted `LineSpacing/xopt.lua`, `tests/test_xopt.lua`, and `tests/fixtures/golden.xopt`.
+5. [x] **GitHub repo description & hero image:** Moved `docs/dialog.png` -> `docs/images/hero.png` and updated the GitHub repo description via `gh repo edit`.
 
-## 1. Lua 5.5 compatibility audit
+---
 
-### Result (verified)
-Every `.lua` file under `LineSpacing/`, `scripts/` and `tests/` was audited for:
-1. Assignments to `for`-loop control variables (numeric and generic `for`): **none found**.
-2. Uses of the identifier `global` (new declaration syntax in Lua 5.5): **none found** (re-checked 2026-11-21; the only `global` is in a comment in `ui/fallback.lua`).
-3. `luac -p LineSpacing/*.lua LineSpacing/ui/*.lua tests/*.lua`: passes cleanly on Lua 5.4.8.
+## 1. Bug Fix & Core UX Simplification
 
-## 2. CI: add Lua 5.5 syntax and unit-test check — done (`3a1edbe`)
+- **Eliminate Undo-stack pollution (`LineSpacing/ui/dialog.lua`):**
+  Remove `preview` state, `previewCheck`, `GLib.timeout_add` debouncing, and `revertPreview()`. Applying settings creates 1 clean Undo step per changed page.
+- **Static Plugin menu (`LineSpacing/main.lua:109-126`):**
+  Remove the dynamic `menuPresets` loop (removes the restart requirement and `"Preset no longer exists."` error). Add `toolbarId` values for toolbar customization and `parentPath = {"Line Spacing"}` for Xournal++ 1.4+ submenus.
 
-### Cause
-`.github/workflows/release.yml:31-32` only installs `lua5.4` and runs `lua5.4 tests/run.lua` on tag push. There is no push/PR `ci.yml` workflow, and Lua 5.5 is not checked in CI.
+## 2. Dialog & Fallback UI Simplification
 
-### Fix
-1. Add `.github/workflows/ci.yml` (on `push` to `main` and `pull_request`) and update `.github/workflows/release.yml` to:
-   - run `lua5.4 tests/run.lua`;
-   - build Lua 5.5.1 from source (`https://www.lua.org/ftp/lua-5.5.1.tar.gz`), run `luac -p` on all `.lua` files in `LineSpacing/` and `tests/`, and run `tests/run.lua` under Lua 5.5.
+- **Declutter GTK window (`LineSpacing/ui/dialog.lua`):**
+  - Condense the 2-row, 5-widget preset header into a single compact preset row.
+  - Move secondary controls (`Line width`, `Line colour`, `Margin colour`, `Also replace PDF/image backgrounds`) into a `Gtk.Expander` (`"Appearance & options"`), auto-expanded when the loaded page or preset uses non-default width or colours.
+  - Close on `Escape` (`on_key_press_event`), and set `transient_for` to Xournal++'s active `Gtk.ApplicationWindow` when available so the window stays on top.
+- **Simplify fallback dialog (`LineSpacing/ui/fallback.lua:13-22, 53-83`):**
+  Reduce the 7-button strip to 5 buttons (`−2 pt`, `+2 pt`, `Apply to All`, `Default Preset`, `Done`) aligned with `STEP_PT = 2`.
 
-## 3. Open item from `SKILL.md`: empty GitHub repo description
+## 3. Settings & Code Simplification
 
-- The GitHub repository description for `dingzy53/xournalpp-line-spacing` is currently empty.
-- Proposed description (matches `README.md` tagline):
-  `Xournal++ plugin to configure page background line, grid, and dot spacing with live preview and presets.`
-- Command (to run once approved):
-  `gh repo edit dingzy53/xournalpp-line-spacing --description "Xournal++ plugin to configure page background line, grid, and dot spacing with live preview and presets."`
+- **Persist preferred unit (`LineSpacing/presets.lua`, `LineSpacing/ui/dialog.lua:38`):**
+  Store the user's preferred unit (`"pt"`, `"mm"`, `"in"`) in `presets.lua` instead of resetting to `"pt"` on every `reloadFromPage()`.
+- **Remove dead and redundant code:**
+  - Remove `LineSpacing/xopt.lua` (inline `DEFAULT_PAGE_WIDTH = 595.275591` in `config.lua`).
+  - Remove unused `Store:rename` (`LineSpacing/presets.lua:243-256`), `config.toMap` (`LineSpacing/config.lua:67-73`), and `ctx.onPresetsChanged` / `ctx.saveDialog` hooks (`LineSpacing/ui/dialog.lua:23-24, 383, 393`).
+  - Remove global `debug.sethook` in `presets.decode` (`LineSpacing/presets.lua:105-110`); `load(text, "=presets", "t", {})` already sandboxes the chunk without clearing external debug hooks.
+  - Default `config.toStyle` fallback for unsupported formats to `"lined"` (`LineSpacing/config.lua:121`), removing duplicate overrides in `main.lua:73`, `fallback.lua:34`, and `dialog.lua:341`.
+- **Docs & repo hygiene:**
+  - Move `docs/dialog.png` -> `docs/images/hero.png` and update `README.md` and `scripts/screenshot.lua`.
+  - Set GitHub repo description and prune merged remote branch `chore/lua55-ci` if approved.
 
-## Order of work
+## 4. Test Suite Review & Additions
 
-1. [x] `Add Lua 5.5 syntax and test check to CI` (`.github/workflows/ci.yml`, `.github/workflows/release.yml`). Done in `3a1edbe`; YAML validated with `yaml.safe_load`. Not run against a real Lua 5.5 build locally; first CI run will confirm.
-2. [ ] Set the GitHub repo description via `gh repo edit` (no new release needed since 0.1.0 code is unchanged).
+**Assessment:** The 3-tier layout (`tests/run.lua`, `tests/gtk_smoke.lua`, `scripts/selftest.sh`) is strong, **but not yet enough to make the plugin robust**:
+- CI only runs `tests/run.lua`, leaving `main.lua`, `ui/fallback.lua`, `ui/gtk.lua`, and `ui/dialog.lua` at **0% CI coverage**.
+- `tests/fakeapp.lua` does not implement `registerUi`, `openDialog`, `getFolder`, or Undo tracking.
+- Fallback dialog flows (used on Windows and minimal Linux without `lua-lgi`) have no automated tests.
 
-## Open questions for the owner
+**Planned test additions:**
+1. **Extend `tests/fakeapp.lua`:** add `registerUi` (`initUi`-only + global callback check), `openDialog` (validate Pango markup), `getFolder`, and an `undoCount` counter on `changeCurrentPageBackground`.
+2. **Add `tests/test_main.lua` to `tests/run.lua`:** test `initUi()`, fallback UI when `lgi` is missing, `lineSpacingStep` bounds and `:pdf` protection, `lineSpacingApplyDefault`, `lineSpacingNewDocument`, `storeWarning` display, and Pango escaping of `&`/`<`/`>`.
+3. **Verify Undo counts & UX in `test_apply.lua` and `tests/gtk_smoke.lua`:** assert 1 Apply on current page = 1 Undo step, closing without Apply = 0 Undo steps, `Escape` closes the window, and preferred `unit` persists across opens.
+4. **Update `.github/workflows/ci.yml`:** run `luac5.4 -p LineSpacing/*.lua LineSpacing/ui/*.lua tests/*.lua` and `xvfb-run -a lua5.4 tests/gtk_smoke.lua` (`lua-lgi` + `xvfb`) on every push and PR.
 
-1. Approve the proposed GitHub repository description above?
-2. ~~Should we add `.github/workflows/ci.yml` for push/PR checks in addition to `release.yml`?~~ Resolved: added (push to `main` and `pull_request`).
+---
+
+## 5. Mac UAT Fixes (`xopp-mac-uat-2026-11-27`)
+
+1. **Treat `app.openDialog` as plain text (`LineSpacing/ui/fallback.lua`, `LineSpacing/main.lua`):** remove `<b>`/`<small>` tags and `fallback.escape` (Xournal++ `XojMsgBox` renders secondary text via `gtk_message_dialog_format_secondary_text`, while `Gtk.Label:set_markup` in `ui/dialog.lua` keeps `GLib.markup_escape_text`).
+2. **Pre-select matching preset (`LineSpacing/presets.lua`, `LineSpacing/ui/dialog.lua`):** add `Store:findMatching(style)` and sync `presetCombo` when loading or applying a matching style.
+3. **OS-aware Undo hint & macOS bundle note (`LineSpacing/apply.lua`, `README.md`):** show `⌘Z` on macOS and document Xournal++ 1.3.8's macOS LuaGObject fallback in `README.md`.

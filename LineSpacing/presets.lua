@@ -101,18 +101,13 @@ end
 function M.decode(text)
   local chunk, err = load(text, "=presets", "t", {})
   if not chunk then return nil, err end
-  -- Abort pathological files (e.g. infinite loops) after ~1M VM instructions.
-  local hasHook = debug and debug.sethook
-  if hasHook then
-    debug.sethook(function() error("presets file takes too long to load", 2) end, "", 1000000)
-  end
   local ok, data = pcall(chunk)
-  if hasHook then debug.sethook() end
   if not ok then return nil, data end
   if type(data) ~= "table" or type(data.presets) ~= "table" then
     return nil, "presets file has no 'presets' table"
   end
-  local out = { version = M.VERSION, presets = {}, default = nil, dropped = 0 }
+  local out = { version = M.VERSION, unit = "pt", presets = {}, default = nil, dropped = 0 }
+  if units.PT_PER[data.unit] then out.unit = data.unit end
   local seen = {}
   for _, p in ipairs(data.presets) do
     local clean = sanitizePreset(p)
@@ -128,7 +123,12 @@ function M.decode(text)
 end
 
 function M.encode(data)
-  local plain = { version = M.VERSION, default = data.default, presets = {} }
+  local plain = {
+    version = M.VERSION,
+    unit = units.PT_PER[data.unit] and data.unit or "pt",
+    default = data.default,
+    presets = {},
+  }
   for _, p in ipairs(data.presets) do
     plain.presets[#plain.presets + 1] = { name = p.name, style = p.style, unit = p.unit }
   end
@@ -148,7 +148,7 @@ Store.__index = Store
 function M.open(dir)
   local self = setmetatable({
     path = dir and (dir .. "/" .. M.FILE_NAME) or nil,
-    data = { version = M.VERSION, presets = {} },
+    data = { version = M.VERSION, unit = "pt", presets = {} },
   }, Store)
   local warning = self:load()
   return self, warning
@@ -164,7 +164,7 @@ function Store:load()
   if not data then
     local backup = self.path .. ".bak-" .. os.date("%Y%m%d-%H%M%S")
     os.rename(self.path, backup)
-    self.data = { version = M.VERSION, presets = {} }
+    self.data = { version = M.VERSION, unit = "pt", presets = {} }
     return "Presets file was unreadable (" .. tostring(err) .. "). Moved to " .. backup
   end
   self.data = data
@@ -240,18 +240,14 @@ function Store:remove(name)
   return self:save()
 end
 
-function Store:rename(old, new)
-  local i = indexOf(self.data.presets, old)
-  if not i then return false, "No user preset named \"" .. tostring(old) .. "\"" end
-  if type(new) ~= "string" then return false, "New name is required" end
-  new = new:gsub("^%s+", ""):gsub("%s+$", "")
-  if new == "" then return false, "New name is required" end
-  if new == old then return true end
-  if isBuiltinName(new) or indexOf(self.data.presets, new) then
-    return false, "A preset named \"" .. new .. "\" already exists"
-  end
-  self.data.presets[i].name = new
-  if self.data.default == old then self.data.default = new end
+function Store:getUnit()
+  return units.PT_PER[self.data.unit] and self.data.unit or "pt"
+end
+
+function Store:setUnit(unit)
+  if not units.PT_PER[unit] then return false, "Unknown unit" end
+  if self.data.unit == unit then return true end
+  self.data.unit = unit
   return self:save()
 end
 
@@ -263,6 +259,17 @@ end
 
 function Store:getDefault()
   return (self.data.default and self:get(self.data.default)) or M.BUILTINS[1]
+end
+
+--- Return the first preset whose serialized background matches `style`, or nil.
+function Store:findMatching(style)
+  if not config.isSupported(style and style.format) then return nil end
+  local fmt, cfg = config.fromStyle(style)
+  for _, p in ipairs(self:list()) do
+    local pFmt, pCfg = config.fromStyle(p.style)
+    if pFmt == fmt and pCfg == cfg then return p end
+  end
+  return nil
 end
 
 --- Suggest an unused name like "Lined 28 pt", "Lined 28 pt (2)".

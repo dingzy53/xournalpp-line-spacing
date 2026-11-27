@@ -16,6 +16,15 @@ local config = require("config")
 
 local M = {}
 
+local function isMac()
+  if package.config:sub(1, 1) ~= "/" then return false end
+  local f = io.open("/System/Library/CoreServices/SystemVersion.plist", "rb")
+  if f then f:close() return true end
+  return false
+end
+
+M.UNDO_KEY = isMac() and "⌘Z" or "Ctrl+Z"
+
 local BACKGROUND_FORMATS = { [":pdf"] = true, [":image"] = true }
 
 function M.isBackgroundPage(format)
@@ -57,7 +66,7 @@ end
 function M.resolveTarget(target, snap)
   local list = {}
   if target == "current" then
-    list[1] = snap.current
+    if snap.pages[snap.current] then list[1] = snap.current end
   elseif target == "all" then
     for i = 1, snap.count do list[i] = i end
   elseif type(target) == "table" then

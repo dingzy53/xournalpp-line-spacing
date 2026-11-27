@@ -3,18 +3,13 @@
 --
 -- Line Spacing — Xournal++ plugin entry point.
 -- Requires Xournal++ >= 1.3.7 (uses the config argument of app.changeCurrentPageBackground).
---
--- Xournal++ prepends this plugin's folder to package.path ("<plugin>/?.lua"), so
--- require("ui.dialog") resolves to <plugin>/ui/dialog.lua.
 local apply = require("apply")
-local config = require("config")
 local presets = require("presets")
 local fallback = require("ui.fallback")
 
 local STEP_PT = 2
 
 local store, storeWarning
-local menuPresets = {} -- mode index -> preset name, fixed at initUi time
 
 local function getStore()
   if not store then
@@ -25,7 +20,7 @@ local function getStore()
 end
 
 local function notify(msg, isError)
-  app.openDialog(fallback.escape(msg), { [1] = "OK" }, "", isError == true)
+  app.openDialog(tostring(msg or ""), { [1] = "OK" }, "", isError == true)
 end
 
 local function guarded(fn)
@@ -66,27 +61,9 @@ lineSpacingStep = guarded(function(direction)
   if err then notify(err, true) end
 end)
 
-lineSpacingReset = guarded(function()
-  local p = apply.currentPage(app)
-  if not p then return end
-  local style = config.toStyle(p.format, p.config)
-  if not config.isSupported(p.format) then style = config.defaultStyle("lined") end
-  style.spacing = config.DEFAULTS[style.format].spacing
-  local _, err = apply.applyStyle(app, style, "current")
-  if err then notify(err, true) end
-end)
-
-local function applyPreset(p)
-  if not p then
-    notify("Preset no longer exists.", true)
-    return
-  end
-  local r, err = apply.applyStyle(app, p.style, "current")
-  if not r then notify(err, true) end
-end
-
 lineSpacingApplyDefault = guarded(function()
-  applyPreset(getStore():getDefault())
+  local r, err = apply.applyStyle(app, getStore():getDefault().style, "current")
+  if not r then notify(err, true) end
 end)
 
 lineSpacingNewDocument = guarded(function()
@@ -100,27 +77,20 @@ lineSpacingNewDocument = guarded(function()
   end)
 end)
 
-lineSpacingApplyPreset = guarded(function(index)
-  applyPreset(getStore():get(menuPresets[index]))
-end)
-
 ---------------------------------------------------------------------------
 
 function initUi()
-  app.registerUi({ menu = "Line spacing: Configure…", callback = "lineSpacingConfigure",
-    accelerator = "<Control><Alt>s" }) -- Ctrl+Alt+L locks the screen on KDE
-  app.registerUi({ menu = "Line spacing: Looser (+" .. STEP_PT .. " pt)", callback = "lineSpacingStep", mode = 1,
-    accelerator = "<Control><Alt>equal" })
-  app.registerUi({ menu = "Line spacing: Tighter (−" .. STEP_PT .. " pt)", callback = "lineSpacingStep", mode = -1,
-    accelerator = "<Control><Alt>minus" })
-  app.registerUi({ menu = "Line spacing: Reset to default", callback = "lineSpacingReset" })
-  app.registerUi({ menu = "Line spacing: Apply default preset", callback = "lineSpacingApplyDefault" })
-  app.registerUi({ menu = "Line spacing: New document (default preset)", callback = "lineSpacingNewDocument" })
-
-  -- One entry per preset. Xournal++ 1.3.7 has no submenus for plugins (parentPath is
-  -- master-only), and entries can only be registered here, so new presets need a restart.
-  for i, p in ipairs(getStore():list()) do
-    menuPresets[i] = p.name
-    app.registerUi({ menu = "Line spacing preset: " .. p.name, callback = "lineSpacingApplyPreset", mode = i })
-  end
+  local parent = { "Line Spacing" }
+  app.registerUi({ menu = "Line Spacing…", parentPath = parent, toolbarId = "LINE_SPACING_CONFIGURE",
+    callback = "lineSpacingConfigure", accelerator = "<Control><Alt>s", iconName = "preferences-other" })
+  app.registerUi({ menu = "Line Spacing: Looser (+" .. STEP_PT .. " pt)", parentPath = parent,
+    toolbarId = "LINE_SPACING_LOOSER", callback = "lineSpacingStep", mode = 1,
+    accelerator = "<Control><Alt>equal", iconName = "zoom-in" })
+  app.registerUi({ menu = "Line Spacing: Tighter (−" .. STEP_PT .. " pt)", parentPath = parent,
+    toolbarId = "LINE_SPACING_TIGHTER", callback = "lineSpacingStep", mode = -1,
+    accelerator = "<Control><Alt>minus", iconName = "zoom-out" })
+  app.registerUi({ menu = "Line Spacing: Apply Default Preset", parentPath = parent,
+    toolbarId = "LINE_SPACING_APPLY_DEFAULT", callback = "lineSpacingApplyDefault", iconName = "emblem-default" })
+  app.registerUi({ menu = "Line Spacing: New Document (Default Preset)", parentPath = parent,
+    toolbarId = "LINE_SPACING_NEW_DOCUMENT", callback = "lineSpacingNewDocument", iconName = "document-new" })
 end
