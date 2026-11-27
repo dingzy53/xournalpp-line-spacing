@@ -20,7 +20,7 @@ local function getStore()
 end
 
 local function notify(msg, isError)
-  app.openDialog(fallback.escape(msg), { [1] = "OK" }, "", isError == true)
+  app.openDialog(tostring(msg or ""), { [1] = "OK" }, "", isError == true)
 end
 
 local function guarded(fn)

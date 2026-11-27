@@ -4,13 +4,10 @@
 -- A fake `app` object mimicking the parts of the Xournal++ Lua API we use.
 local M = {}
 
-local function checkPango(msg)
+local function checkPlainText(msg)
   local s = tostring(msg or "")
-  s = s:gsub("&amp;", ""):gsub("&lt;", ""):gsub("&gt;", ""):gsub("&quot;", ""):gsub("&apos;", "")
-    :gsub("&#%d+;", ""):gsub("&#x%x+;", "")
-  s = s:gsub("</?b>", ""):gsub("</?small>", ""):gsub("</?i>", "")
-  if s:find("[&<>]") then
-    error("invalid Pango markup in app.openDialog: " .. tostring(msg))
+  if s:find("</?[bsi][^>]*>") then
+    error("raw markup tags in app.openDialog (plain text only): " .. s)
   end
 end
 
@@ -91,7 +88,7 @@ function M.new(pages, current)
   end
 
   function app.openDialog(msg, buttons, cb, isError)
-    checkPango(msg)
+    checkPlainText(msg)
     fake.dialogs[#fake.dialogs + 1] = { msg = msg, buttons = buttons, cb = cb, error = isError == true }
   end
 

@@ -74,6 +74,8 @@ return {
     lineSpacingConfigure()
     T.eq(#fake.dialogs, 1)
     T.ok(fake.dialogs[1].msg:find("24 pt", 1, true))
+    T.ok(not fake.dialogs[1].msg:find("<b>", 1, true))
+    T.ok(not fake.dialogs[1].msg:find("<small>", 1, true))
 
     -- Button 2: +2 pt -> applies immediately and reopens dialog with 26 pt
     _G.__lineSpacingFallbackResponse(2)
@@ -98,7 +100,7 @@ return {
     T.eq(#fake.dialogs, before)
   end },
 
-  { "storeWarning escapes special characters and only shows once", function(T)
+  { "storeWarning passes plain path text without HTML escaping and only shows once", function(T)
     local dir = T.tmpdir() .. "/bad&<dir>"
     assert(os.execute("mkdir -p '" .. dir .. "'"))
     local f = assert(io.open(dir .. "/presets.lua", "w"))
@@ -109,14 +111,10 @@ return {
     lineSpacingConfigure()
     T.eq(#fake.dialogs, 2) -- warning + fallback UI
     T.eq(fake.dialogs[1].error, true)
-    T.ok(fake.dialogs[1].msg:find("&amp;&lt;dir&gt;", 1, true), fake.dialogs[1].msg)
+    T.ok(fake.dialogs[1].msg:find("bad&<dir>", 1, true), fake.dialogs[1].msg)
+    T.ok(not fake.dialogs[1].msg:find("&amp;", 1, true), fake.dialogs[1].msg)
 
     lineSpacingConfigure()
     T.eq(#fake.dialogs, 3, "warning not repeated")
-  end },
-
-  { "fallback.escape escapes Pango markup characters", function(T)
-    local fallback = require("ui.fallback")
-    T.eq(fallback.escape("a & b <c>"), "a &amp; b &lt;c&gt;")
   end },
 }
