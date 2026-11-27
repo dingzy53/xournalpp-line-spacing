@@ -11,28 +11,24 @@ local units = require("units")
 local M = {}
 
 local BUTTONS = {
-  [1] = "−4 pt",
-  [2] = "−1 pt",
-  [3] = "+1 pt",
-  [4] = "+4 pt",
-  [5] = "Apply to all pages",
-  [6] = "Save as preset",
-  [7] = "Done",
+  [1] = "−2 pt",
+  [2] = "+2 pt",
+  [3] = "Apply to all pages",
+  [4] = "Apply default preset",
+  [5] = "Done",
 }
-local DELTA = { [1] = -4, [2] = -1, [3] = 1, [4] = 4 }
+local DELTA = { [1] = -2, [2] = 2 }
 
 local function escape(s)
   return (tostring(s):gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;"))
 end
 M.escape = escape
 
---- Current page's style (unsupported formats are converted to a default lined style).
+--- Current page's style (unsupported formats default to lined).
 local function currentStyle(app)
   local p = apply.currentPage(app)
   if not p then return nil end
-  local style = config.toStyle(p.format, p.config)
-  if not config.isSupported(p.format) then style = config.defaultStyle("lined") end
-  return style, p
+  return config.toStyle(p.format, p.config), p
 end
 
 --- Change spacing of the current page by `delta` pt. Returns new style or nil, err.
@@ -69,14 +65,12 @@ function M.open(ctx)
       local _, err = M.step(app, DELTA[button])
       if err then ctx.notify(err, true) return end
       M.open(ctx) -- reopen with the new value
-    elseif button == 5 then
+    elseif button == 3 then
       local r, err = apply.applyStyle(app, style, "all")
       ctx.notify(r and apply.describeResult(r) or err, not r)
-    elseif button == 6 then
-      local name = ctx.store:suggestName(style, "pt")
-      local ok, err = ctx.store:put(name, style, "pt")
-      ctx.notify(ok and ("Saved preset \"" .. name .. "\". It appears in the menu after restarting Xournal++.") or err,
-        not ok)
+    elseif button == 4 then
+      local r, err = apply.applyStyle(app, ctx.store:getDefault().style, "current")
+      ctx.notify(r and apply.describeResult(r) or err, not r)
     end
   end
   app.openDialog(msg, BUTTONS, "__lineSpacingFallbackResponse")

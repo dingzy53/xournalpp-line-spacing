@@ -8,7 +8,6 @@
 local apply = require("apply")
 local config = require("config")
 local units = require("units")
-local xopt = require("xopt") -- A4 size only; .xopt export disabled, see README
 
 local M = {}
 
@@ -17,12 +16,13 @@ local instance -- the single open dialog, if any
 local TARGETS = { "current", "all", "range" }
 local TARGET_LABELS = { current = "Current page", all = "All pages", range = "Page range" }
 
---- ctx = {
----   app, store, gtk = ui.gtk.load() result,
----   notify(msg, isError),       -- fallback notification (app.openDialog)
----   onPresetsChanged(),         -- optional
----   saveDialog(suggestedName, cb(path)) -- optional, defaults to app.fileDialogSave
---- }
+local function hasCustomAppearance(s)
+  local d = config.DEFAULTS[s.format]
+  return s.color ~= nil or s.marginColor ~= nil
+    or math.abs((s.lineWidth or d.lineWidth) - d.lineWidth) >= 1e-6
+end
+
+--- ctx = { app, store, gtk = ui.gtk.load() result, notify(msg, isError) }
 function M.open(ctx)
   if instance then
     instance.window:present()
@@ -35,9 +35,8 @@ function M.open(ctx)
 
   local self = {}
   local updating = false   -- suppress change handlers while filling widgets
-  local unit = "pt"
+  local unit = store:getUnit()
   local style = config.defaultStyle("lined")
-  local preview = { active = false, original = nil, timer = nil }
 
   ---------------------------------------------------------------------------
   -- Widgets
@@ -57,10 +56,18 @@ function M.open(ctx)
   end
 
   local presetCombo = Gtk.ComboBoxText { hexpand = true }
+  local defaultBtn = Gtk.Button { label = "★", tooltip_text = "Set as default preset" }
+  local saveMenuBtn = Gtk.Button { label = "Save…" }
   local deleteBtn = Gtk.Button { label = "Delete" }
-  local defaultBtn = Gtk.Button { label = "Set default" }
-  local nameEntry = Gtk.Entry { placeholder_text = "Preset name", hexpand = true }
-  local saveBtn = Gtk.Button { label = "Save preset" }
+
+  local nameEntry = Gtk.Entry { placeholder_text = "Preset name", width_chars = 18 }
+  local saveBtn = Gtk.Button { label = "Save" }
+  saveBtn:get_style_context():add_class("suggested-action")
+  local savePopover = Gtk.Popover { relative_to = saveMenuBtn }
+  local popBox = Gtk.Box { orientation = Gtk.Orientation.HORIZONTAL, spacing = 6, border_width = 8 }
+  popBox:pack_start(nameEntry, true, true, 0)
+  popBox:pack_start(saveBtn, false, false, 0)
+  savePopover:add(popBox)
 
   local formatCombo = Gtk.ComboBoxText()
   for _, f in ipairs(config.FORMATS) do formatCombo:append(f, config.LABELS[f]) end
@@ -72,7 +79,7 @@ function M.open(ctx)
 
   local marginLabel = label("Margin:")
   local marginSpin = spin(0, 10000, 1, 2)
-  local marginUnitLabel = label("pt")
+  local marginUnitLabel = label(unit)
   local sideCombo = Gtk.ComboBoxText()
   sideCombo:append("left", "Left")
   sideCombo:append("right", "Right")
@@ -92,51 +99,56 @@ function M.open(ctx)
   local rangeBox = Gtk.Box { orientation = Gtk.Orientation.HORIZONTAL, spacing = 6,
     label("from"), fromSpin, label("to"), toSpin }
   local includeBgCheck = Gtk.CheckButton { label = "Also replace PDF/image backgrounds" }
-  local previewCheck = Gtk.CheckButton { label = "Live preview on current page" }
 
   local status = label("", { wrap = true, max_width_chars = 50, selectable = true })
 
-  local readBtn = Gtk.Button { label = "Read from page" }
-  local newDocBtn = Gtk.Button { label = "New document with these settings" }
+  local readBtn = Gtk.Button { label = "Read Page" }
   local closeBtn = Gtk.Button { label = "Close" }
   local applyBtn = Gtk.Button { label = "Apply" }
   applyBtn:get_style_context():add_class("suggested-action")
 
-  local grid = Gtk.Grid { row_spacing = 8, column_spacing = 8 }
-  local row = 0
-  local function addRow(l, ...)
-    if l then grid:attach(type(l) == "string" and label(l) or l, 0, row, 1, 1) end
-    local box = Gtk.Box { orientation = Gtk.Orientation.HORIZONTAL, spacing = 6 }
-    for _, w in ipairs({ ... }) do
-      local expand = w.hexpand == true
-      box:pack_start(w, expand, expand, 0)
+  local function makeGrid()
+    local g = Gtk.Grid { row_spacing = 8, column_spacing = 8 }
+    local row = 0
+    local function addRow(l, ...)
+      if l then g:attach(type(l) == "string" and label(l) or l, 0, row, 1, 1) end
+      local box = Gtk.Box { orientation = Gtk.Orientation.HORIZONTAL, spacing = 6 }
+      for _, w in ipairs({ ... }) do
+        local expand = w.hexpand == true
+        box:pack_start(w, expand, expand, 0)
+      end
+      g:attach(box, 1, row, 1, 1)
+      row = row + 1
     end
-    grid:attach(box, 1, row, 1, 1)
-    row = row + 1
-  end
-  local function addWide(w, col, width)
-    grid:attach(w, col or 0, row, width or 2, 1)
-    row = row + 1
+    local function addWide(w, col, width)
+      g:attach(w, col or 0, row, width or 2, 1)
+      row = row + 1
+    end
+    return g, addRow, addWide
   end
 
-  addRow("Preset:", presetCombo, deleteBtn, defaultBtn)
-  addRow(nil, nameEntry, saveBtn)
+  local grid, addRow, addWide = makeGrid()
+  addRow("Preset:", presetCombo, defaultBtn, saveMenuBtn, deleteBtn)
   addWide(Gtk.Separator { orientation = Gtk.Orientation.HORIZONTAL })
   addRow("Paper:", formatCombo)
   addRow("Line spacing:", spacingSpin, unitCombo, spacingPtLabel)
   addRow(marginLabel, marginSpin, marginUnitLabel, sideCombo)
-  addRow("Line width:", lineWidthSpin, label("pt"))
-  addRow(colorCheck, colorBtn)
-  addRow(marginColorCheck, marginColorBtn)
-  addWide(Gtk.Separator { orientation = Gtk.Orientation.HORIZONTAL })
   addRow("Apply to:", targetCombo, rangeBox)
-  addWide(includeBgCheck, 1, 1)
-  addWide(previewCheck, 1, 1)
+
+  local advGrid, addAdvRow, addAdvWide = makeGrid()
+  advGrid.margin_top = 6
+  addAdvRow("Line width:", lineWidthSpin, label("pt"))
+  addAdvRow(colorCheck, colorBtn)
+  addAdvRow(marginColorCheck, marginColorBtn)
+  addAdvWide(includeBgCheck, 0, 2)
+
+  local appearanceExpander = Gtk.Expander { label = "Appearance & options", expanded = false }
+  appearanceExpander:add(advGrid)
+  addWide(appearanceExpander)
   addWide(status)
 
   local buttons = Gtk.Box { orientation = Gtk.Orientation.HORIZONTAL, spacing = 6 }
   buttons:pack_start(readBtn, false, false, 0)
-  buttons:pack_start(newDocBtn, false, false, 0)
   buttons:pack_end(applyBtn, false, false, 0)
   buttons:pack_end(closeBtn, false, false, 0)
 
@@ -151,6 +163,14 @@ function M.open(ctx)
     border_width = 12,
     window_position = Gtk.WindowPosition.MOUSE,
   }
+  pcall(function()
+    for _, top in ipairs(Gtk.Window.list_toplevels()) do
+      if top ~= window and top.visible and Gtk.ApplicationWindow:is_type_of(top) then
+        window:set_transient_for(top)
+        break
+      end
+    end
+  end)
   window:add(vbox)
   self.window = window
 
@@ -176,7 +196,7 @@ function M.open(ctx)
 
   local function pageWidth()
     local p = apply.currentPage(app)
-    return p and p.width or xopt.A4.width
+    return p and p.width or config.DEFAULT_PAGE_WIDTH
   end
 
   local function setSpinPt(sp, pt)
@@ -276,61 +296,6 @@ function M.open(ctx)
   end
 
   ---------------------------------------------------------------------------
-  -- Preview
-  ---------------------------------------------------------------------------
-  local function cancelTimer()
-    if preview.timer then
-      GLib.source_remove(preview.timer)
-      preview.timer = nil
-    end
-  end
-
-  local function startPreview()
-    local p = apply.currentPage(app)
-    if not p then return end
-    preview.active = true
-    preview.original = { index = p.index, format = p.format, config = p.config }
-  end
-
-  -- Undo the live preview by restoring the remembered page type.
-  local function revertPreview()
-    cancelTimer()
-    if preview.active and preview.original then
-      local o = preview.original
-      local p = apply.snapshot(app).pages[o.index]
-      if p and (p.format ~= o.format or p.config ~= o.config) then
-        apply.applyPageType(app, o.format, o.config, { from = o.index, to = o.index },
-          { includeBackgrounds = true })
-      end
-    end
-    preview.active, preview.original = false, nil
-  end
-
-  local function schedulePreview()
-    if not preview.active then return end
-    cancelTimer()
-    preview.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, function()
-      preview.timer = nil
-      local s = readForm()
-      local ok, err = config.validate(s, pageWidth())
-      if not ok then setStatus(err, true) return false end
-      local p = apply.currentPage(app)
-      if p and preview.original and p.index ~= preview.original.index then
-        -- user moved to another page: finish the old preview, start a new one here
-        revertPreview()
-        startPreview()
-      end
-      if p and apply.isBackgroundPage(p.format) and not includeBgCheck.active then
-        setStatus("Preview skipped: the current page has a PDF/image background.", false)
-        return false
-      end
-      apply.applyStyle(app, s, "current", { includeBackgrounds = true })
-      setStatus("Previewing on page " .. (p and p.index or "?") .. " (not applied yet).")
-      return false
-    end)
-  end
-
-  ---------------------------------------------------------------------------
   -- Actions
   ---------------------------------------------------------------------------
   function self.reloadFromPage()
@@ -338,26 +303,22 @@ function M.open(ctx)
     if not p then return end
     style = config.toStyle(p.format, p.config)
     if not config.isSupported(p.format) then
-      style = config.defaultStyle("lined")
       setStatus(string.format("Page %d has a %s background; showing defaults.", p.index,
         p.format:gsub("^:", "")))
     else
       setStatus(string.format("Loaded from page %d of %d.", p.index, p.count))
     end
+    appearanceExpander.expanded = hasCustomAppearance(style)
     refreshPageRange()
     fillForm()
   end
 
   local function doApply()
-    cancelTimer()
     local s = readForm()
     local ok, err = config.validate(s, pageWidth())
     if not ok then setStatus(err, true) return end
     local target = targetCombo.active_id or "current"
     if target == "range" then target = { from = fromSpin.value, to = toSpin.value } end
-    -- Restore the previewed page first so it is counted/handled like any other page.
-    local wasPreviewing = preview.active
-    revertPreview()
     local r, aerr = apply.applyStyle(app, s, target, { includeBackgrounds = includeBgCheck.active })
     if not r then setStatus(aerr, true) return end
     style = s
@@ -368,7 +329,13 @@ function M.open(ctx)
     else
       setStatus(apply.describeResult(r) .. ". Ctrl+Z undoes.")
     end
-    if wasPreviewing then startPreview() end
+  end
+
+  local function openSavePopover()
+    nameEntry.text = store:suggestName(readForm(), unit)
+    savePopover:show_all()
+    savePopover:popup()
+    nameEntry:grab_focus()
   end
 
   local function doSavePreset()
@@ -378,9 +345,12 @@ function M.open(ctx)
     local ok, err = store:put(name, s, unit)
     if not ok then setStatus(err, true) return end
     nameEntry.text = ""
+    if savePopover.visible then
+      savePopover:popdown()
+      savePopover:hide()
+    end
     refreshPresets(name)
-    setStatus("Saved preset \"" .. name .. "\". Menu entries update after restarting Xournal++.")
-    if ctx.onPresetsChanged then ctx.onPresetsChanged() end
+    setStatus("Saved preset \"" .. name .. "\".")
   end
 
   local function doDeletePreset()
@@ -390,7 +360,6 @@ function M.open(ctx)
     if not ok then setStatus(err, true) return end
     refreshPresets()
     setStatus("Deleted preset \"" .. name .. "\".")
-    if ctx.onPresetsChanged then ctx.onPresetsChanged() end
   end
 
   local function doSetDefault()
@@ -399,32 +368,10 @@ function M.open(ctx)
     local ok, err = store:setDefault(name)
     if not ok then setStatus(err, true) return end
     refreshPresets(name)
-    setStatus("\"" .. name .. "\" is now the default preset (Plugins menu → Apply default preset).")
-  end
-
-  -- "Template for future use": new documents get these settings on page 1; pages
-  -- inserted afterwards copy them when "Copy last page settings" is on (the default).
-  -- Exporting a .xopt for Journal -> Configure Page Template would be nicer, but that
-  -- dialog segfaults on custom configs in every release up to 1.3.8 (fixed upstream
-  -- in #7888, 2026-11-03), so it is not offered.
-  local function doNewDocument()
-    local s = readForm()
-    local ok, err = config.validate(s, pageWidth())
-    if not ok then setStatus(err, true) return end
-    revertPreview()
-    previewCheck.active = false
-    setStatus("Creating a new document…")
-    apply.newDocument(app, s, function(fn, ms)
-      GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, fn)
-    end, function(done, msg)
-      if instance ~= self then return end -- dialog closed meanwhile
-      if msg then setStatus(msg, not done) else setStatus("") end
-      if done then refreshPageRange() end
-    end)
+    setStatus("\"" .. name .. "\" is now the default preset.")
   end
 
   local function close()
-    revertPreview()
     window:destroy()
   end
 
@@ -436,24 +383,22 @@ function M.open(ctx)
     updateSensitivity()
     local s = readForm()
     spacingPtLabel.label = unit == "pt" and "" or ("= " .. units.format(s.spacing, "pt"))
-    schedulePreview()
   end
 
   function formatCombo:on_changed()
     if updating then return end
-    -- switching paper type: keep spacing, reset margin to the new format's default
     local s = readForm()
     local d = config.DEFAULTS[s.format]
     if d.margin ~= nil and not config.hasMargin(style.format) then s.margin = d.margin end
     style = s
     fillForm()
-    schedulePreview()
   end
 
   function unitCombo:on_changed()
     if updating then return end
     local s = readForm() -- read with the old unit
     unit = unitCombo.active_id or "pt"
+    store:setUnit(unit)
     style = s
     fillForm()
   end
@@ -473,38 +418,34 @@ function M.open(ctx)
     local p = presetCombo.active_id and store:get(presetCombo.active_id)
     if not p then return end
     style = config.copy(p.style)
-    unit = p.unit or "pt"
+    if p.unit and p.unit ~= unit then
+      unit = p.unit
+      store:setUnit(unit)
+    end
+    appearanceExpander.expanded = hasCustomAppearance(style)
     fillForm()
     setStatus("Preset \"" .. p.name .. "\" loaded into the form. Click Apply to use it.")
-    schedulePreview()
-  end
-
-  function previewCheck:on_toggled()
-    if previewCheck.active then
-      startPreview()
-      schedulePreview()
-    else
-      revertPreview()
-      setStatus("Preview off; page restored.")
-    end
   end
 
   readBtn.on_clicked = function() self.reloadFromPage() end
   applyBtn.on_clicked = doApply
+  saveMenuBtn.on_clicked = openSavePopover
   saveBtn.on_clicked = doSavePreset
   nameEntry.on_activate = doSavePreset
   deleteBtn.on_clicked = doDeletePreset
   defaultBtn.on_clicked = doSetDefault
-  newDocBtn.on_clicked = doNewDocument
   closeBtn.on_clicked = close
 
-  function window:on_delete_event()
-    revertPreview()
-    return false -- let GTK destroy the window
+  function window:on_key_press_event(ev)
+    local ok, kv = pcall(function() return ev.key.keyval end)
+    if (ok and kv or ev.keyval) == Gdk.KEY_Escape then
+      close()
+      return true
+    end
+    return false
   end
 
   function window:on_destroy()
-    cancelTimer()
     instance = nil
   end
 
@@ -520,12 +461,14 @@ function M.open(ctx)
 
   -- exposed for tests
   self.widgets = {
-    presetCombo = presetCombo, nameEntry = nameEntry, saveBtn = saveBtn, deleteBtn = deleteBtn,
-    defaultBtn = defaultBtn, formatCombo = formatCombo, spacingSpin = spacingSpin, unitCombo = unitCombo,
+    presetCombo = presetCombo, defaultBtn = defaultBtn, saveMenuBtn = saveMenuBtn, deleteBtn = deleteBtn,
+    savePopover = savePopover, nameEntry = nameEntry, saveBtn = saveBtn,
+    formatCombo = formatCombo, spacingSpin = spacingSpin, unitCombo = unitCombo,
     marginSpin = marginSpin, sideCombo = sideCombo, lineWidthSpin = lineWidthSpin,
-    colorCheck = colorCheck, colorBtn = colorBtn, targetCombo = targetCombo, fromSpin = fromSpin,
-    toSpin = toSpin, includeBgCheck = includeBgCheck, previewCheck = previewCheck, status = status,
-    applyBtn = applyBtn, closeBtn = closeBtn, newDocBtn = newDocBtn, readBtn = readBtn,
+    colorCheck = colorCheck, colorBtn = colorBtn, marginColorCheck = marginColorCheck,
+    marginColorBtn = marginColorBtn, targetCombo = targetCombo, fromSpin = fromSpin,
+    toSpin = toSpin, includeBgCheck = includeBgCheck, appearanceExpander = appearanceExpander,
+    status = status, applyBtn = applyBtn, closeBtn = closeBtn, readBtn = readBtn,
   }
   self.readForm = readForm
   self.close = close
