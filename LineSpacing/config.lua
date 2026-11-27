@@ -10,6 +10,8 @@
 -- read with operator>> (numbers) or std::hex (colours, 0xAARRGGBB, alpha ignored).
 local M = {}
 
+M.DEFAULT_PAGE_WIDTH = 595.275591
+
 M.FORMATS = { "ruled", "lined", "graph", "dotted" }
 
 M.LABELS = {
@@ -64,14 +66,6 @@ function M.parse(str)
   return list
 end
 
-function M.toMap(list)
-  local map = {}
-  for _, kv in ipairs(list) do
-    map[kv[1]] = kv[2]
-  end
-  return map
-end
-
 --- Compact, locale-independent number formatting: 24 -> "24", 20.1259842 -> "20.126".
 function M.formatNumber(n)
   local s = string.format("%.4f", n)
@@ -115,10 +109,10 @@ end
 M.defaultStyle = copyDefaults
 
 --- Build a Style from a page's format + config string.
--- Unsupported formats (plain, pdf, image, staves, iso*) yield a default "ruled" style,
+-- Unsupported formats (plain, pdf, image, staves, iso*) yield a default "lined" style,
 -- with `sourceFormat` recording what the page really had.
 function M.toStyle(format, configStr)
-  local fmt = M.isSupported(format) and format or "ruled"
+  local fmt = M.isSupported(format) and format or "lined"
   local style = copyDefaults(fmt)
   style.sourceFormat = format
 

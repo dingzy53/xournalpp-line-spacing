@@ -57,7 +57,7 @@ end
 function M.resolveTarget(target, snap)
   local list = {}
   if target == "current" then
-    list[1] = snap.current
+    if snap.pages[snap.current] then list[1] = snap.current end
   elseif target == "all" then
     for i = 1, snap.count do list[i] = i end
   elseif type(target) == "table" then
