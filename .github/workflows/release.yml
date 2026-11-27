@@ -28,10 +28,10 @@ jobs:
       - name: Run unit and GTK smoke tests (Lua 5.4)
         run: |
           sudo apt-get update
-          sudo apt-get install -y lua5.4 lua-lgi xvfb
+          sudo apt-get install -y lua5.4 lua5.3 lua-lgi gir1.2-gtk-3.0 xvfb
           luac5.4 -p LineSpacing/*.lua LineSpacing/ui/*.lua tests/*.lua
           lua5.4 tests/run.lua
-          xvfb-run -a lua5.4 tests/gtk_smoke.lua
+          xvfb-run -a lua5.3 tests/gtk_smoke.lua
 
       - name: Build Lua 5.5.1
         run: |
