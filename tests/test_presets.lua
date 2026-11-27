@@ -106,4 +106,13 @@ return {
     store:put(n1, style(28))
     T.eq(store:suggestName(style(28), "pt"), "Ruled 28 pt (2)")
   end },
+  { "findMatching locates built-in and user presets", function(T)
+    local store = presets.open(T.tmpdir())
+    T.eq(store:findMatching(config.defaultStyle("lined")).name, "Default (24 pt)")
+    local fmt, cfg = config.fromStyle(store:get("College ruled (7.1 mm)").style)
+    T.eq(store:findMatching(config.toStyle(fmt, cfg)).name, "College ruled (7.1 mm)")
+    store:put("Mine", style(30), "pt")
+    T.eq(store:findMatching(style(30)).name, "Mine")
+    T.eq(store:findMatching(style(19)), nil)
+  end },
 }

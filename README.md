@@ -25,8 +25,9 @@ Xournal++ can already draw backgrounds with any spacing, but its own menus only 
   - Fedora: `sudo dnf install lua-lgi`
   - Debian/Ubuntu: `sudo apt install lua-lgi`
   - Flathub Xournal++: already bundled (LuaGObject)
+  - macOS: Xournal++ 1.3.8 ships broken LuaGObject library paths, so the plugin uses the fallback dialog until Xournal++ fixes its bundle.
 
-  Without them, the plugin falls back to a simpler dialog with buttons.
+  Without working GTK bindings, the plugin falls back to a simpler dialog with buttons.
 
 ## Installation
 
@@ -74,7 +75,7 @@ Everything is in the **Plugin** menu (or add them to a toolbar via **View → To
 - **Margin** position for the margin line, left or right. For graph paper this is the border width.
 - **Appearance & options** (collapsible): line width, custom line/margin colours, and *Also replace PDF/image backgrounds*. Auto-expands when a page or preset uses custom width or colours.
 - **Apply to**: the current page, all pages, or a page range.
-- Every *Apply* creates one clean undo step per changed page (`Ctrl+Z`). Press `Esc` to close the window.
+- Every *Apply* creates one clean undo step per changed page (`Ctrl+Z` / `⌘Z`). Press `Esc` to close the window.
 
 ### Presets and new documents
 

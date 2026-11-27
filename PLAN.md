@@ -4,7 +4,7 @@
 >
 > Baseline on this machine (Lua 5.4.8, `lua-lgi` + display): `luac -p LineSpacing/*.lua LineSpacing/ui/*.lua tests/*.lua` clean; `lua tests/run.lua` passes `46 passed, 0 failed`; `lua tests/gtk_smoke.lua` passes `ALL OK` (16 checks).
 >
-> **Status:** Code, tests, CI, selftest, hero screenshot, and README implemented locally on `main` (unpushed). Version bump/tag waits on Mac computer-use verification.
+> **Status:** Code, tests, CI, selftest, hero screenshot, and README updated on `refactor/simplify-1.3` with macOS UAT fixes (`xopp-mac-uat-2026-11-27`). Version bump/tag waits on macOS retest.
 
 ---
 
@@ -59,3 +59,11 @@
 2. **Add `tests/test_main.lua` to `tests/run.lua`:** test `initUi()`, fallback UI when `lgi` is missing, `lineSpacingStep` bounds and `:pdf` protection, `lineSpacingApplyDefault`, `lineSpacingNewDocument`, `storeWarning` display, and Pango escaping of `&`/`<`/`>`.
 3. **Verify Undo counts & UX in `test_apply.lua` and `tests/gtk_smoke.lua`:** assert 1 Apply on current page = 1 Undo step, closing without Apply = 0 Undo steps, `Escape` closes the window, and preferred `unit` persists across opens.
 4. **Update `.github/workflows/ci.yml`:** run `luac5.4 -p LineSpacing/*.lua LineSpacing/ui/*.lua tests/*.lua` and `xvfb-run -a lua5.4 tests/gtk_smoke.lua` (`lua-lgi` + `xvfb`) on every push and PR.
+
+---
+
+## 5. Mac UAT Fixes (`xopp-mac-uat-2026-11-27`)
+
+1. **Treat `app.openDialog` as plain text (`LineSpacing/ui/fallback.lua`, `LineSpacing/main.lua`):** remove `<b>`/`<small>` tags and `fallback.escape` (Xournal++ `XojMsgBox` renders secondary text via `gtk_message_dialog_format_secondary_text`, while `Gtk.Label:set_markup` in `ui/dialog.lua` keeps `GLib.markup_escape_text`).
+2. **Pre-select matching preset (`LineSpacing/presets.lua`, `LineSpacing/ui/dialog.lua`):** add `Store:findMatching(style)` and sync `presetCombo` when loading or applying a matching style.
+3. **OS-aware Undo hint & macOS bundle note (`LineSpacing/apply.lua`, `README.md`):** show `⌘Z` on macOS and document Xournal++ 1.3.8's macOS LuaGObject fallback in `README.md`.

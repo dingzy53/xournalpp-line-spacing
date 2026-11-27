@@ -295,6 +295,14 @@ function M.open(ctx)
     end
   end
 
+  local function syncPresetSelection(s, supported)
+    local match = supported and store:findMatching(s) or nil
+    updating = true
+    if match then presetCombo.active_id = match.name else presetCombo.active = -1 end
+    updating = false
+    updateSensitivity()
+  end
+
   ---------------------------------------------------------------------------
   -- Actions
   ---------------------------------------------------------------------------
@@ -302,7 +310,8 @@ function M.open(ctx)
     local p = apply.currentPage(app)
     if not p then return end
     style = config.toStyle(p.format, p.config)
-    if not config.isSupported(p.format) then
+    local supported = config.isSupported(p.format)
+    if not supported then
       setStatus(string.format("Page %d has a %s background; showing defaults.", p.index,
         p.format:gsub("^:", "")))
     else
@@ -311,6 +320,7 @@ function M.open(ctx)
     appearanceExpander.expanded = hasCustomAppearance(style)
     refreshPageRange()
     fillForm()
+    syncPresetSelection(style, supported)
   end
 
   local function doApply()
@@ -322,12 +332,13 @@ function M.open(ctx)
     local r, aerr = apply.applyStyle(app, s, target, { includeBackgrounds = includeBgCheck.active })
     if not r then setStatus(aerr, true) return end
     style = s
+    syncPresetSelection(s, true)
     -- Detect a Xournal++ build that ignores the config argument.
     local fmt, cfg = config.fromStyle(s)
     if r.changed > 0 and target == "current" and not apply.verifyCurrent(app, fmt, cfg) then
       setStatus("Xournal++ did not keep the line settings (config argument unsupported?).", true)
     else
-      setStatus(apply.describeResult(r) .. ". Ctrl+Z undoes.")
+      setStatus(apply.describeResult(r) .. ". " .. apply.UNDO_KEY .. " undoes.")
     end
   end
 

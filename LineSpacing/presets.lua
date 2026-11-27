@@ -261,6 +261,17 @@ function Store:getDefault()
   return (self.data.default and self:get(self.data.default)) or M.BUILTINS[1]
 end
 
+--- Return the first preset whose serialized background matches `style`, or nil.
+function Store:findMatching(style)
+  if not config.isSupported(style and style.format) then return nil end
+  local fmt, cfg = config.fromStyle(style)
+  for _, p in ipairs(self:list()) do
+    local pFmt, pCfg = config.fromStyle(p.style)
+    if pFmt == fmt and pCfg == cfg then return p end
+  end
+  return nil
+end
+
 --- Suggest an unused name like "Lined 28 pt", "Lined 28 pt (2)".
 function Store:suggestName(style, unit)
   local base = config.LABELS[style.format]:gsub(" %+ margin line", "") .. " " .. units.format(style.spacing, unit or "pt")

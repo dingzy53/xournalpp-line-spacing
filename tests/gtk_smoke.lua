@@ -42,6 +42,7 @@ local d = dialog.open(ctx)
 local w = d.widgets
 pump()
 check(w.formatCombo.active_id == "lined", "form loaded from page 1 (lined)")
+check(w.presetCombo.active_id == "Default (24 pt)", "matching built-in preset pre-selected")
 check(math.abs(w.spacingSpin.value - 24) < 1e-9, "spacing 24 pt from page")
 check(w.appearanceExpander.expanded == false, "appearance expander starts collapsed for default page")
 d.close(); pump()
@@ -86,6 +87,7 @@ fake.current = 3
 fake.pages[3] = { format = "ruled", config = "r1=18,lw=1.5,f1=ff0000" }
 d = dialog.open(ctx); w = d.widgets; pump()
 check(w.unitCombo.active_id == "mm", "reopened dialog remembers preferred unit")
+check(w.presetCombo.active_id == nil, "custom page leaves preset unselected")
 check(w.appearanceExpander.expanded == true, "appearance expander auto-expands for custom line width/colour")
 d.close(); pump()
 
