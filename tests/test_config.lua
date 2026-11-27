@@ -43,11 +43,11 @@ return {
     T.eq(s.lineWidth, 1.5); T.eq(s.color, "#ff0000"); T.eq(s.marginColor, "#00aa00")
     T.eq(#s.extra, 0)
   end },
-  { "toStyle unsupported format falls back to ruled", function(T)
+  { "toStyle unsupported format falls back to lined", function(T)
     local s = config.toStyle("pdf", "")
-    T.eq(s.format, "ruled"); T.eq(s.sourceFormat, "pdf")
+    T.eq(s.format, "lined"); T.eq(s.sourceFormat, "pdf")
     local s2 = config.toStyle("plain", "")
-    T.eq(s2.format, "ruled")
+    T.eq(s2.format, "lined")
   end },
   { "graph margin is a non-negative border", function(T)
     local s = config.toStyle("graph", "m1=40,rm=1,bli=5,blw=1")

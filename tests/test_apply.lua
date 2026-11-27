@@ -25,6 +25,7 @@ return {
     local app, fake = fakeapp.new(doc(), 3)
     local r = apply.applyStyle(app, style30(), "current")
     T.eq(r.changed, 1)
+    T.eq(fake.undoCount, 1)
     T.eq(fake.pages[3].format, "lined"); T.eq(fake.pages[3].config, "r1=30")
     T.eq(fake.pages[1].config, "")
     T.eq(#fake.calls, 1, "no page switching needed for the current page")
@@ -33,6 +34,7 @@ return {
     local app, fake = fakeapp.new(doc(), 3)
     local r = apply.applyStyle(app, style30(), "all")
     T.eq(r.changed, 2); T.eq(r.skippedBackground, 1); T.eq(r.unchanged, 1)
+    T.eq(fake.undoCount, 2)
     T.eq(fake.pages[2].format, ":pdf")
     T.eq(fake.pages[1].config, "r1=30")
     T.eq(fake.current, 3, "current page restored")
@@ -56,6 +58,7 @@ return {
     local r, err = apply.applyStyle(app, s, "all")
     T.eq(r, nil); T.ok(err)
     T.eq(#fake.calls, 0)
+    T.eq(fake.undoCount, 0)
   end },
   { "currentPage and verify", function(T)
     local app = fakeapp.new(doc(), 4)

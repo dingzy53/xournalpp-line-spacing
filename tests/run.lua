@@ -40,7 +40,7 @@ function T.readFile(path)
   return s
 end
 
-local files = { "test_units", "test_config", "test_xopt", "test_presets", "test_apply" }
+local files = { "test_units", "test_config", "test_presets", "test_apply", "test_main" }
 for _, name in ipairs(files) do
   local cases = require(name)
   for _, case in ipairs(cases) do

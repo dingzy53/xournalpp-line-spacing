@@ -58,8 +58,8 @@ local function steps()
   check(apply.currentPage(app).config == "r1=24", "Looser (+2 pt): " .. apply.currentPage(app).config)
   lineSpacingStep(-1); lineSpacingStep(-1)
   check(apply.currentPage(app).config == "r1=20", "Tighter twice: " .. apply.currentPage(app).config)
-  lineSpacingReset()
-  check(apply.currentPage(app).config == "r1=24", "Reset: " .. apply.currentPage(app).config)
+  lineSpacingApplyDefault()
+  check(apply.currentPage(app).config == "r1=24", "Apply default preset: " .. apply.currentPage(app).config)
   coroutine.yield()
 
   -- 4. GTK dialog inside the host
@@ -74,17 +74,25 @@ local function steps()
       notify = function(m) log("     notify: " .. m) end,
     })
     coroutine.yield()
-    d.widgets.spacingSpin.value = 36
+    d.widgets.unitCombo.active_id = "mm"
+    d.widgets.spacingSpin.value = 10
     d.widgets.applyBtn:clicked()
     coroutine.yield()
-    check(apply.currentPage(app).config == "r1=36", "dialog Apply: " .. apply.currentPage(app).config)
-    d.widgets.previewCheck.active = true
-    d.widgets.spacingSpin.value = 50
-    coroutine.yield("wait") -- let the 200 ms preview timer fire
-    check(apply.currentPage(app).config == "r1=50", "dialog preview: " .. apply.currentPage(app).config)
+    check(apply.currentPage(app).config == "r1=28.3465", "dialog Apply in mm: " .. apply.currentPage(app).config)
+    -- Changing spin without Apply + closing does not alter the page
+    d.widgets.spacingSpin.value = 15
     d.close()
     coroutine.yield()
-    check(apply.currentPage(app).config == "r1=36", "dialog close reverts preview: " .. apply.currentPage(app).config)
+    check(apply.currentPage(app).config == "r1=28.3465", "close without Apply leaves page unchanged")
+    -- Reopening remembers persisted unit "mm"
+    d = require("ui.dialog").open({
+      app = app, gtk = gtk, store = presets.open(dir),
+      notify = function(m) log("     notify: " .. m) end,
+    })
+    coroutine.yield()
+    check(d.widgets.unitCombo.active_id == "mm", "persisted unit reloaded: " .. tostring(d.widgets.unitCombo.active_id))
+    d.close()
+    coroutine.yield()
     -- open/close repeatedly
     for _ = 1, 5 do
       local dd = require("ui.dialog").open({ app = app, gtk = gtk, store = presets.open(dir), notify = log })
